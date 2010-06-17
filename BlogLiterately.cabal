@@ -111,6 +111,7 @@ Description:     BlogLiterately is a tool for uploading web log posts to web log
                  >      --other-code-kate  hilight other code with highlighting-kate
                  >      --publish          Publish post (otherwise it's uploaded as a draft)
                  >      --category=VALUE   post category (can specify more than one)
+                 >      --tag=VALUE        set tag (can specify more than one)
                  >   -b --blogid=VALUE     Blog specific identifier (default=default)
                  >      --postid=VALUE     Post to replace (if any)
                  .
