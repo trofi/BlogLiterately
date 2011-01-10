@@ -1,6 +1,6 @@
 Name:           BlogLiterately
 Version:        0.3
-Synopsis:	A tool for posting Haskelly articles to blogs
+Synopsis:       A tool for posting Haskelly articles to blogs
 
 Description:     BlogLiterately is a tool for uploading web log posts to web log servers
                  that support the MetaWeblog API (such as WordPress-based blogs and many
@@ -140,20 +140,21 @@ Cabal-Version:  >= 1.5
 Homepage:       none
 License:        GPL
 License-file:   LICENSE
-Category:	Web
-Copyright:	Copyright (c) Robert Greayer 2008.
+Category:       Web
+Copyright:      Copyright (c) Robert Greayer 2008.
 Author:         Robert Greayer <robgreayer@yahoo.com>
-Maintainer:	Robert Greayer <robgreayer@yahoo.com>
-Stability:	experimental
+Maintainer:     Robert Greayer <robgreayer@yahoo.com>,
+                Sergei Trofimovich <slyfox@inbox.ru>
+Stability:      experimental
 Build-Type:     Simple
-Tested-With:	GHC ==6.10.4
+
 Extra-Source-Files: hscolour.css
                     kate.css
 Executable BlogLiterately
-  Build-Depends:  base >= 4.0 && < 4.3, haskell98, parsec >= 2.1.0.0 && < 3,
+  Build-Depends:  base >= 4.0 && < 4.4, haskell98, parsec >= 2.1.0.0 && < 3.2,
                   HaXml >= 1.20 && < 1.21, utf8-string >= 0.3 && < 0.4,
-                  hscolour >= 1.15 && < 1.17, xhtml >= 3000.2 && < 3000.3, cmdargs >= 0.1 && < 0.2,
-                  haxr >= 3000.2.1 && < 3000.6, pandoc >= 1.2 && < 1.6
+                  hscolour >= 1.15 && < 1.18, xhtml >= 3000.2 && < 3000.3, cmdargs >= 0.2 && < 0.7,
+                  haxr >= 3000.2.1 && < 3000.9, pandoc >= 1.2 && < 1.7
   Main-Is:        BlogLiterately.lhs
   Hs-Source-Dirs: src
-  Ghc-Options: -fwarn-unused-imports
+  Ghc-Options: -fwarn-unused-imports -Wall

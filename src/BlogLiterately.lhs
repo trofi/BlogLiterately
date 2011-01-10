@@ -18,17 +18,17 @@ And [hscolour][] for highlighting:
 To post to a blog, we need the [MetaWeblog][] API, which is an XML-RPC-based
 protocol for interacting with blogs.
 
-We'll use the Haskell XML-RPC library, [HaXR][], by Bjorn Bringert, (on 
-[hackage][hackage-haxr]). *Note: the latest version (as of this writing) of 
+We'll use the Haskell XML-RPC library, [HaXR][], by Bjorn Bringert, (on
+[hackage][hackage-haxr]). *Note: the latest version (as of this writing) of
 HaXR on Hackage does not specify an upper bound in its dependency on HaXml, but
-it is incompatible with the 1.19 versions of HaXml!  If you have HaXml-1.19.* 
+it is incompatible with the 1.19 versions of HaXml!  If you have HaXml-1.19.*
 installed, you'll have to work around this.*
 
 > import Network.XmlRpc.Client
 > import Network.XmlRpc.Internals
 
-And it works that out I'll need some miscellaneous other stuff.  Since I'm 
-writing a command line tool, I'll need to process the command line arguments, 
+And it works that out I'll need some miscellaneous other stuff.  Since I'm
+writing a command line tool, I'll need to process the command line arguments,
 and Neil Mitchell's [CmdArgs][] library ought to work for that:
 
 > import System.Console.CmdArgs
@@ -46,31 +46,31 @@ Wallace's [HaXml][] XML combinators:
 > import Text.XHtml.Transitional(showHtmlFragment)
 > import Text.ParserCombinators.Parsec
 
-The program will read in a literate Haskell file, use Pandoc to parse it as 
+The program will read in a literate Haskell file, use Pandoc to parse it as
 markdown, and, if it is using hscolour to for the Haskell pieces, will use
 hscolour to transform those.  Pandoc turns its input into a structure of type:
 
     [haskell]
     data Pandoc = Pandoc Meta [Block]
-    
+
 where a `Block` (the interesting bit, for my purposes) looks like:
 
     [haskell]
     -- | Block element.
-    data Block  
+    data Block
         = Plain [Inline]        -- ^ Plain text, not a paragraph
         | Para [Inline]         -- ^ Paragraph
-        | CodeBlock Attr String -- ^ Code block (literal) with attributes 
+        | CodeBlock Attr String -- ^ Code block (literal) with attributes
         | RawHtml String        -- ^ Raw HTML block (literal)
         | BlockQuote [Block]    -- ^ Block quote (list of blocks)
         | OrderedList ListAttributes [[Block]] -- ^ Ordered list (attributes
                                 -- and a list of items, each a list of blocks)
         | BulletList [[Block]]  -- ^ Bullet list (list of items, each
                                 -- a list of blocks)
-        | DefinitionList [([Inline],[Block])]  -- ^ Definition list 
+        | DefinitionList [([Inline],[Block])]  -- ^ Definition list
                                 -- (list of items, each a pair of an inline list,
                                 -- the term, and a block list)
-        | Header Int [Inline]   -- ^ Header - level (integer) and text (inlines) 
+        | Header Int [Inline]   -- ^ Header - level (integer) and text (inlines)
         | HorizontalRule        -- ^ Horizontal rule
         | Table [Inline] [Alignment] [Double] [[Block]] [[[Block]]]  -- ^ Table,
                                 -- with caption, column alignments,
@@ -82,7 +82,7 @@ where a `Block` (the interesting bit, for my purposes) looks like:
 
 The literate Haskell that Pandoc finds in a file ends up in various `CodeBlock`
 elements of the `Pandoc` document.  Other code can also wind up in `CodeBlock`
-elements -- normal markdown formatted code.  The `Attr` component has 
+elements -- normal markdown formatted code.  The `Attr` component has
 metadata about what's in the code block:
 
     [haskell]
@@ -406,34 +406,36 @@ To create a command line program,  I can capture the command line controls in a 
 And using CmdArgs, this bit of impure evil defines how the command line arguments
 work:
 
-> bl = mode $ BlogLiterately {
+> flag = name
+> text = help
+
+> bl = BlogLiterately {
 >     test = def &= text "do a test-run: html goes to stdout, is not posted",
->     style = "" &= text "Style Specification (for --hscolour-icss)" & typFile,
->     hshighlight = enum (HsColourInline defaultStylePrefs)
->         ([ (HsColourInline defaultStylePrefs) &= explicit & 
->                flag "hscolour-icss" & text inline,
->            HsColourCSS &= explicit & flag "hscolour-css" & text css,
->            HsNoHighlight &= explicit & flag "hs-nohilight" &
->                text "no haskell hilighting" ] ++
->           (if noKate then []  else
->                [HsKate &= explicit & flag "hs-kate" & text hskate])),
->     highlightOther = enum False 
+>     style = "" &= text "Style Specification (for --hscolour-icss)" &= typFile,
+>     hshighlight = enum ([ (HsColourInline defaultStylePrefs) &= flag "hscolour-icss" &= text inline,
+>                                HsColourCSS &= explicit &= flag "hscolour-css" &= text css,
+>                                HsNoHighlight &= explicit &= flag "hs-nohilight" &= text "no haskell hilighting" ] ++
+>                              (if noKate then []
+>                                         else [HsKate &= explicit &= flag "hs-kate" &= text hskate])),
+>     highlightOther = enum
 >         (if noKate then [] else 
->              [True &= explicit & flag "other-code-kate" &
+>              [False, True &= explicit &= flag "other-code-kate" &=
 >               text "hilight other code with highlighting-kate"]),
 >     publish = def &= text "Publish post (otherwise it's uploaded as a draft)",
->     categories = def &= explicit & flag "category" & 
+>     categories = def &= explicit &= flag "category" &=
 >         text "post category (can specify more than one)",
->     keywords = def &= explicit & flag "tag" & 
+>     keywords = def &= explicit &= flag "tag" &=
 >         text "set tag (can specify more than one)",
 >     blogid = "default" &= text "Blog specific identifier",
->     blog = def &= argPos 0 & typ "URL" 
->         & text "URL of blog's xmlrpc address (e.g. http://example.com/blog/xmlrpc.php)",
->     user = def &= argPos 1 & typ "USER" & text "blog author's user name" ,
->     password = def &= argPos 2 & typ "PASSWORD" & text "blog author's password",
->     title = def &= argPos 3 & typ "TITLE",
->     file = def &=  argPos 4 & typ "FILE" & text "literate haskell file",
->     postid = "" &= text "Post to replace (if any)" } where
+>     blog = def &= argPos 0 &= typ "URL" 
+>         {- &= text "URL of blog's xmlrpc address (e.g. http://example.com/blog/xmlrpc.php)" -},
+>     user = def &= argPos 1 &= typ "USER" {- &= text "blog author's user name" -},
+>     password = def &= argPos 2 &= typ "PASSWORD" {- &= text "blog author's password" -},
+>     title = def &= argPos 3 &= typ "TITLE",
+>     file = def &=  argPos 4 &= typ "FILE" {- &= text "literate haskell file" -},
+>     postid = "" &= text "Post to replace (if any)"
+>  }
+>  where
 >     inline =  "hilight haskell: hscolour, inline style (default)"
 >     css = "hilight haskell: hscolour, separate stylesheet"
 >     hskate = "hilight haskell with highlighting-kate"
@@ -461,7 +463,7 @@ post it to the blog:
 
 And the main program is simply:
 
-> main = cmdArgs info [bl] >>= blogLiterately
+> main = cmdArgs (bl &= summary info) >>= blogLiterately
 >    where info = "BlogLierately v0.3, (C) Robert Greayer 2010\n" ++
 >                 "This program comes with ABSOLUTELY NO WARRANTY\n"
 
