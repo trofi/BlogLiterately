@@ -461,7 +461,7 @@ post it to the blog:
 And the main program is simply:
 
 > main = cmdArgs (bl &= summary info) >>= blogLiterately
->    where info = "BlogLierately v0.3, (C) Robert Greayer 2010\n" ++
+>    where info = "BlogLiterately v0.3, (C) Robert Greayer 2010\n" ++
 >                 "This program comes with ABSOLUTELY NO WARRANTY\n"
 
 I can run it to get some help:
