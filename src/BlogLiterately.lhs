@@ -406,25 +406,24 @@ To create a command line program,  I can capture the command line controls in a 
 And using CmdArgs, this bit of impure evil defines how the command line arguments
 work:
 
-> flag = name
 > text = help
 
 > bl = BlogLiterately {
 >     test = def &= text "do a test-run: html goes to stdout, is not posted",
 >     style = "" &= text "Style Specification (for --hscolour-icss)" &= typFile,
->     hshighlight = enum ([ (HsColourInline defaultStylePrefs) &= flag "hscolour-icss" &= text inline,
->                                HsColourCSS &= explicit &= flag "hscolour-css" &= text css,
->                                HsNoHighlight &= explicit &= flag "hs-nohilight" &= text "no haskell hilighting" ] ++
+>     hshighlight = enum ([ (HsColourInline defaultStylePrefs) &= name "hscolour-icss" &= text inline,
+>                                HsColourCSS &= explicit &= name "hscolour-css" &= text css,
+>                                HsNoHighlight &= explicit &= name "hs-nohilight" &= text "no haskell hilighting" ] ++
 >                              (if noKate then []
->                                         else [HsKate &= explicit &= flag "hs-kate" &= text hskate])),
+>                                         else [HsKate &= explicit &= name "hs-kate" &= text hskate])),
 >     highlightOther = enum
 >         (if noKate then [] else 
->              [False, True &= explicit &= flag "other-code-kate" &=
+>              [False, True &= explicit &= name "other-code-kate" &=
 >               text "hilight other code with highlighting-kate"]),
 >     publish = def &= text "Publish post (otherwise it's uploaded as a draft)",
->     categories = def &= explicit &= flag "category" &=
+>     categories = def &= explicit &= name "category" &=
 >         text "post category (can specify more than one)",
->     keywords = def &= explicit &= flag "tag" &=
+>     keywords = def &= explicit &= name "tag" &=
 >         text "set tag (can specify more than one)",
 >     blogid = "default" &= text "Blog specific identifier",
 >     blog = def &= argPos 0 &= typ "URL" 
