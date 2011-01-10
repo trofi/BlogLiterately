@@ -406,33 +406,31 @@ To create a command line program,  I can capture the command line controls in a 
 And using CmdArgs, this bit of impure evil defines how the command line arguments
 work:
 
-> text = help
-
 > bl = BlogLiterately {
->     test = def &= text "do a test-run: html goes to stdout, is not posted",
->     style = "" &= text "Style Specification (for --hscolour-icss)" &= typFile,
->     hshighlight = enum ([ (HsColourInline defaultStylePrefs) &= name "hscolour-icss" &= text inline,
->                                HsColourCSS &= explicit &= name "hscolour-css" &= text css,
->                                HsNoHighlight &= explicit &= name "hs-nohilight" &= text "no haskell hilighting" ] ++
+>     test = def &= help "do a test-run: html goes to stdout, is not posted",
+>     style = "" &= help "Style Specification (for --hscolour-icss)" &= typFile,
+>     hshighlight = enum ([ (HsColourInline defaultStylePrefs) &= name "hscolour-icss" &= help inline,
+>                                HsColourCSS &= explicit &= name "hscolour-css" &= help css,
+>                                HsNoHighlight &= explicit &= name "hs-nohilight" &= help "no haskell hilighting" ] ++
 >                              (if noKate then []
->                                         else [HsKate &= explicit &= name "hs-kate" &= text hskate])),
+>                                         else [HsKate &= explicit &= name "hs-kate" &= help hskate])),
 >     highlightOther = enum
 >         (if noKate then [] else 
 >              [False, True &= explicit &= name "other-code-kate" &=
->               text "hilight other code with highlighting-kate"]),
->     publish = def &= text "Publish post (otherwise it's uploaded as a draft)",
+>               help "hilight other code with highlighting-kate"]),
+>     publish = def &= help "Publish post (otherwise it's uploaded as a draft)",
 >     categories = def &= explicit &= name "category" &=
->         text "post category (can specify more than one)",
+>         help "post category (can specify more than one)",
 >     keywords = def &= explicit &= name "tag" &=
->         text "set tag (can specify more than one)",
->     blogid = "default" &= text "Blog specific identifier",
+>         help "set tag (can specify more than one)",
+>     blogid = "default" &= help "Blog specific identifier",
 >     blog = def &= argPos 0 &= typ "URL" 
->         {- &= text "URL of blog's xmlrpc address (e.g. http://example.com/blog/xmlrpc.php)" -},
->     user = def &= argPos 1 &= typ "USER" {- &= text "blog author's user name" -},
->     password = def &= argPos 2 &= typ "PASSWORD" {- &= text "blog author's password" -},
+>         {- &= help "URL of blog's xmlrpc address (e.g. http://example.com/blog/xmlrpc.php)" -},
+>     user = def &= argPos 1 &= typ "USER" {- &= help "blog author's user name" -},
+>     password = def &= argPos 2 &= typ "PASSWORD" {- &= help "blog author's password" -},
 >     title = def &= argPos 3 &= typ "TITLE",
->     file = def &=  argPos 4 &= typ "FILE" {- &= text "literate haskell file" -},
->     postid = "" &= text "Post to replace (if any)"
+>     file = def &=  argPos 4 &= typ "FILE" {- &= help "literate haskell file" -},
+>     postid = "" &= help "Post to replace (if any)"
 >  }
 >  where
 >     inline =  "hilight haskell: hscolour, inline style (default)"
