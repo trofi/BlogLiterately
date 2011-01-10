@@ -414,9 +414,9 @@ work:
 >                                HsNoHighlight &= explicit &= name "hs-nohilight" &= help "no haskell hilighting" ] ++
 >                              (if noKate then []
 >                                         else [HsKate &= explicit &= name "hs-kate" &= help hskate])),
->     highlightOther = enum
->         (if noKate then [] else 
->              [False, True &= explicit &= name "other-code-kate" &=
+>     highlightOther = enum $
+>         False:(if noKate then [] else
+>              [True &= explicit &= name "other-code-kate" &=
 >               help "hilight other code with highlighting-kate"]),
 >     publish = def &= help "Publish post (otherwise it's uploaded as a draft)",
 >     categories = def &= explicit &= name "category" &=
