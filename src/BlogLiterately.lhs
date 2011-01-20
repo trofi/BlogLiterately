@@ -388,7 +388,7 @@ To create a command line program,  I can capture the command line controls in a 
 >        showHelp :: Bool,
 >        showVersion :: Bool,
 >        verbosity :: Verbosity,
->        test :: Bool,       -- do a dry-run: html goes to stdout
+>        standalone :: Bool,       -- run offline: html goes to stdout
 >        style :: String,    -- name of a style file
 >        hshighlight :: HsHighlight,
 >        highlightOther :: Bool, -- use highlight-kate to highlight other code
@@ -410,7 +410,7 @@ To create a command line program,  I can capture the command line controls in a 
 >   showHelp = False,
 >   showVersion = False,
 >   verbosity = NormalVerbosity,
->   test = False,
+>   standalone = False,
 >   style = "",
 >   hshighlight = HsColourInline defaultStylePrefs,
 >   highlightOther = False,
@@ -442,8 +442,8 @@ work:
 > -- not used
 > --  , Option "v" ["verbose"] (NoArg (\opts -> opts { verbosity = HighVerbosity })) "Higher verbosity"
 > --  , Option "q" ["quiet"] (NoArg (\opts -> opts { verbosity = LowVerbosity })) "Lower verbosity"
->   , Option "t" ["test"] (NoArg (\opts -> opts { test = True })) "do a test-run: html goes to stdout, is not posted"
->   , Option "s" ["style"] (ReqArg (\o opts -> opts { style = o}) "FILE") "Style Specification (for --hscolour-icss)"
+>   , Option "s" ["standalone"] (NoArg (\opts -> opts { standalone = True })) "run standalone; html goes to stdout, is not posted"
+>   , Option "" ["style"] (ReqArg (\o opts -> opts { style = o}) "FILE") "Style Specification (for --hscolour-icss)"
 >   , Option ""  ["hscolour-icss"] (NoArg (\opts -> opts { hshighlight = HsColourInline defaultStylePrefs }))
 >                                                                        "hilight haskell: hscolour, inline style (default)"
 >   , Option ""  ["hscolour-css"] (NoArg (\opts -> opts { hshighlight = HsColourCSS })) "hilight haskell: hscolour, separate stylesheet"
@@ -471,14 +471,14 @@ The main blogging function uses the information captured in the `BlogLiterately`
 type to read the style preferences, read the input file and transform it, and
 post it to the blog:
 
-> blogLiterately (BlogLiterately _ _ _ test style hsmode other pub cats keywords blogid url
+> blogLiterately (BlogLiterately _ _ _ standalone style hsmode other pub cats keywords blogid url
 >         user pw title file postid) = do
 >     prefs <- getStylePrefs style
 >     let hsmode' = case hsmode of
 >             HsColourInline _ -> HsColourInline prefs
 >             _ -> hsmode
 >     html <- liftM (xformDoc hsmode' other) $ U.readFile file
->     if test
+>     if standalone
 >        then putStr html
 >        else if null postid 
 >            then do
