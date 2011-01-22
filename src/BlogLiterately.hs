@@ -457,7 +457,7 @@ options =
   ] | not noKate] ++ [
     Option ""  ["publish"] (NoArg (\opts -> opts { publish = True })) "Publish post (otherwise it's uploaded as a draft)"
   , Option ""  ["category"] (ReqArg (\v opts -> opts { categories = categories opts ++ [v] }) "VALUE") "post category (can specify more than one)"
-  , Option ""  ["keywords"] (ReqArg (\v opts -> opts { keywords = keywords opts ++ [v] }) "VALUE") "set tag (can specify more than one)"
+  , Option ""  ["tag"] (ReqArg (\v opts -> opts { keywords = keywords opts ++ [v] }) "VALUE") "set tag (can specify more than one)"
   , Option "b" ["blogid"] (ReqArg (\v opts -> opts { blogid = v }) "VALUE") "Blog specific identifier"
   , Option ""  ["postid"] (ReqArg (\v opts -> opts { postid = v }) "VALUE") "Post to replace (if any)"
   ]
