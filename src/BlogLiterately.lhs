@@ -2,7 +2,6 @@ This new version of BlogLiterately adds a few more options and tries to allow
 the user to take advantage of the Pandoc syntax highlighting, or suppress
 it.
 
-> {-# LANGUAGE DeriveDataTypeable #-}
 > module Main where
 
 We need [Pandoc][] for parsing [Markdown][]:
@@ -27,11 +26,13 @@ installed, you'll have to work around this.*
 > import Network.XmlRpc.Client
 > import Network.XmlRpc.Internals
 
-And it works that out I'll need some miscellaneous other stuff.  Since I'm
-writing a command line tool, I'll need to process the command line arguments,
-and Neil Mitchell's [CmdArgs][] library ought to work for that:
+And it works that out I'll need some miscellaneous other stuff. Since I'm
+writing a command line tool, I'll need to process the command line arguments, 
+use GetOpt in base for that:
 
-> import System.Console.CmdArgs
+> import System.Console.GetOpt
+> import System.Environment ( getArgs )
+> import System.Exit ( exitSuccess, exitFailure )
 
 I'm going to end up needing to parse and manipulate XHTML, so I'll use Malcolm
 Wallace's [HaXml][] XML combinators:
@@ -373,7 +374,7 @@ There are four modes of Haskell highlighting:
 
 > data HsHighlight = HsColourInline { hsStylePrefs :: StylePrefs }
 >     | HsColourCSS | HsKate | HsNoHighlight
->     deriving (Data,Typeable,Show,Eq)
+>     deriving (Show,Eq)
 
 And two modes for other code (off or on!).
 
@@ -385,7 +386,10 @@ won't show the kate-related options if it isn't):
 To create a command line program,  I can capture the command line controls in a type:
 
 > data BlogLiterately = BlogLiterately {
->        test :: Bool,       -- do a dry-run: html goes to stdout
+>        showHelp :: Bool,
+>        showVersion :: Bool,
+>        verbosity :: Verbosity,
+>        standalone :: Bool,       -- run offline: html goes to stdout
 >        style :: String,    -- name of a style file
 >        hshighlight :: HsHighlight,
 >        highlightOther :: Bool, -- use highlight-kate to highlight other code
@@ -401,54 +405,73 @@ To create a command line program,  I can capture the command line controls in a 
 >        title :: String,    -- post title
 >        file :: String,     -- file to post
 >        postid :: String    -- id of a post to updated
->     } deriving (Show,Data,Typeable)
+>     } deriving (Show)
+
+> defaultBlogLiterately = BlogLiterately {
+>   showHelp = False,
+>   showVersion = False,
+>   verbosity = NormalVerbosity,
+>   standalone = False,
+>   style = "",
+>   hshighlight = HsColourInline defaultStylePrefs,
+>   highlightOther = False,
+>   publish = False,
+>   categories = [],
+>   keywords = [],
+>   blogid = "default",
+>   blog = "",
+>   user = "",
+>   password = "",
+>   title = "",
+>   file = "",
+>   postid = ""
+>   }
 
 And using CmdArgs, this bit of impure evil defines how the command line arguments
 work:
 
-> bl = BlogLiterately {
->     test = def &= help "do a test-run: html goes to stdout, is not posted",
->     style = "" &= help "Style Specification (for --hscolour-icss)" &= typFile,
->     hshighlight = enum ([ (HsColourInline defaultStylePrefs) &= name "hscolour-icss" &= help inline,
->                                HsColourCSS &= explicit &= name "hscolour-css" &= help css,
->                                HsNoHighlight &= explicit &= name "hs-nohilight" &= help "no haskell hilighting" ] ++
->                              (if noKate then []
->                                         else [HsKate &= explicit &= name "hs-kate" &= help hskate])),
->     highlightOther = enum $
->         False:(if noKate then [] else
->              [True &= explicit &= name "other-code-kate" &=
->               help "hilight other code with highlighting-kate"]),
->     publish = def &= help "Publish post (otherwise it's uploaded as a draft)",
->     categories = def &= explicit &= name "category" &=
->         help "post category (can specify more than one)",
->     keywords = def &= explicit &= name "tag" &=
->         help "set tag (can specify more than one)",
->     blogid = "default" &= help "Blog specific identifier",
->     blog = def &= argPos 0 &= typ "URL" 
->         {- &= help "URL of blog's xmlrpc address (e.g. http://example.com/blog/xmlrpc.php)" -},
->     user = def &= argPos 1 &= typ "USER" {- &= help "blog author's user name" -},
->     password = def &= argPos 2 &= typ "PASSWORD" {- &= help "blog author's password" -},
->     title = def &= argPos 3 &= typ "TITLE",
->     file = def &=  argPos 4 &= typ "FILE" {- &= help "literate haskell file" -},
->     postid = "" &= help "Post to replace (if any)"
->  }
->  where
->     inline =  "hilight haskell: hscolour, inline style (default)"
->     css = "hilight haskell: hscolour, separate stylesheet"
->     hskate = "hilight haskell with highlighting-kate"
+
+> data Verbosity = LowVerbosity
+>                | NormalVerbosity
+>                | HighVerbosity
+>                deriving (Eq,Show)
+
+> options :: [OptDescr (BlogLiterately -> BlogLiterately)]
+> options =
+>   [ Option "?" ["help"] (NoArg (\opts -> opts { showHelp = True })) "Show usage information"
+>   , Option "V" ["version"] (NoArg (\opts -> opts { showVersion = True})) "Show version information"
+> -- not used
+> --  , Option "v" ["verbose"] (NoArg (\opts -> opts { verbosity = HighVerbosity })) "Higher verbosity"
+> --  , Option "q" ["quiet"] (NoArg (\opts -> opts { verbosity = LowVerbosity })) "Lower verbosity"
+>   , Option "s" ["standalone"] (NoArg (\opts -> opts { standalone = True })) "run standalone; html goes to stdout, it's not uploaded"
+>   , Option "" ["style"] (ReqArg (\o opts -> opts { style = o}) "FILE") "Style Specification (for --hscolour-icss)"
+>   , Option ""  ["hscolour-icss"] (NoArg (\opts -> opts { hshighlight = HsColourInline defaultStylePrefs }))
+>                                                                        "hilight haskell: hscolour, inline style (default)"
+>   , Option ""  ["hscolour-css"] (NoArg (\opts -> opts { hshighlight = HsColourCSS })) "hilight haskell: hscolour, separate stylesheet"
+>   , Option ""  ["hs-nohilight"] (NoArg (\opts -> opts { hshighlight = HsNoHighlight })) "no haskell hilighting"
+>   ] ++ concat [[ -- only if we have kate
+>     Option ""  ["hs-kate"] (NoArg (\opts -> opts { hshighlight = HsKate })) "hilight other code with highlighting-kate"
+>   , Option ""  ["other-code-kate"] (NoArg (\opts -> opts { highlightOther = True })) "hilight other code with highlighting-kate"
+>   ] | not noKate] ++ [
+>     Option ""  ["publish"] (NoArg (\opts -> opts { publish = True })) "Publish post (otherwise it's uploaded as a draft)"
+>   , Option ""  ["category"] (ReqArg (\v opts -> opts { categories = categories opts ++ [v] }) "VALUE") "post category (can specify more than one)"
+>   , Option ""  ["keywords"] (ReqArg (\v opts -> opts { keywords = keywords opts ++ [v] }) "VALUE") "set tag (can specify more than one)"
+>   , Option "b" ["blogid"] (ReqArg (\v opts -> opts { blogid = v }) "VALUE") "Blog specific identifier"
+>   , Option ""  ["postid"] (ReqArg (\v opts -> opts { postid = v }) "VALUE") "Post to replace (if any)"
+>   ]
 
 The main blogging function uses the information captured in the `BlogLiterately`
 type to read the style preferences, read the input file and transform it, and
 post it to the blog:
 
-> blogLiterately (BlogLiterately test style hsmode other pub cats keywords blogid url
+> blogLiterately (BlogLiterately _ _ _ standalone style hsmode other pub cats keywords blogid url
 >         user pw title file postid) = do
 >     prefs <- getStylePrefs style
 >     let hsmode' = case hsmode of
 >             HsColourInline _ -> HsColourInline prefs
 >             _ -> hsmode
 >     html <- liftM (xformDoc hsmode' other) $ U.readFile file
->     if test
+>     if standalone
 >        then putStr html
 >        else if null postid 
 >            then do
@@ -460,9 +483,35 @@ post it to the blog:
 
 And the main program is simply:
 
-> main = cmdArgs (bl &= summary info) >>= blogLiterately
->    where info = "BlogLiterately v0.3, (C) Robert Greayer 2010\n" ++
->                 "This program comes with ABSOLUTELY NO WARRANTY\n"
+> main = getArgs >>= parseArgs >>= blogLiterately
+>
+> parseArgs :: [String] -> IO BlogLiterately
+> parseArgs args = do
+>   case runFlags $ getOpt Permute options args of
+>     (opts, _, _) | showHelp opts -> printUsage >> exitSuccess
+>                  | showVersion opts -> putStrLn copyright >> exitSuccess
+>     (opts, [file], []) | standalone opts -> do
+>       return opts { file = file }       
+>     (opts, [url, user, password, title, file], []) -> do
+>       return opts { blog = url, user = user, password = password, title = title, file = file }
+>     (_, _, err) | not (null err) -> die (unlines err)
+>     o -> printUsage >> exitSuccess
+>  
+>  where accum flags = foldr (flip (.)) id flags defaultBlogLiterately
+>        runFlags (opts, nonOpts, errs) = (accum opts, nonOpts, errs)
+
+> copyright = "BlogLiterately v0.3, (C) Robert Greayer 2010\n" ++
+>             "This program comes with ABSOLUTELY NO WARRANTY\n"
+
+> usage prg = "\n" ++ prg
+>               ++ " [ --standalone | BLOG USER PASSWORD TITLE ] [options] <markdown-file>"
+>               ++ "\n\nOptions:"
+
+> die :: String -> IO a
+> die str = putStrLn str >> exitFailure
+
+> printUsage :: IO ()
+> printUsage = putStrLn (usageInfo (copyright ++ usage "BlogLiterately") options)
 
 I can run it to get some help:
 

@@ -56,7 +56,7 @@ Description:     BlogLiterately is a tool for uploading web log posts to web log
                  >     , ("hs-layout","color: red;")
                  >     , ("hs-comment","color: green;")
                  >     , ("hs-conid", "")
-                 >     , ("hs-varid", "")
+                 >     , ("hs-varid", "")<<<<<<< HEAD
                  >     , ("hs-conop", "")
                  >     , ("hs-varop", "")
                  >     , ("hs-str", "color: teal;")
@@ -153,8 +153,9 @@ Extra-Source-Files: hscolour.css
 Executable BlogLiterately
   Build-Depends:  base >= 4.0 && < 4.4, haskell98, parsec >= 2.1.0.0 && < 3.2,
                   HaXml >= 1.20 && < 1.21, utf8-string >= 0.3 && < 0.4,
-                  hscolour >= 1.15 && < 1.18, xhtml >= 3000.2 && < 3000.3, cmdargs >= 0.2 && < 0.7,
+                  hscolour >= 1.15 && < 1.18, xhtml >= 3000.2 && < 3000.3,
                   haxr >= 3000.2.1 && < 3000.9, pandoc >= 1.2 && < 1.7
+
   Main-Is:        BlogLiterately.lhs
   Hs-Source-Dirs: src
   Ghc-Options: -fwarn-unused-imports -Wall
