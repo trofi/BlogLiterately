@@ -1,3 +1,4 @@
+{-# LANGUAGE RecordWildCards #-}
 -- This new version of BlogLiterately adds a few more options and tries to allow
 -- the user to take advantage of the Pandoc syntax highlighting, or suppress
 -- it.
@@ -389,7 +390,7 @@ data BlogLiterately = BlogLiterately {
        showHelp :: Bool,
        showVersion :: Bool,
        verbosity :: Verbosity,
-       standalone :: Bool,       -- run offline: html goes to stdout
+       mode :: Maybe Mode,
        style :: String,    -- name of a style file
        hshighlight :: HsHighlight,
        highlightOther :: Bool, -- use highlight-kate to highlight other code
@@ -399,19 +400,16 @@ data BlogLiterately = BlogLiterately {
        keywords :: [String], -- tag list
        blogid :: String,   -- blog-specific identifier (e.g. for blogging
                                -- software handling multiple blogs)
-       blog :: String,     -- blog xmlrpc URL
-       user :: String,     -- blog user name
-       password :: String, -- blog password
-       title :: String,    -- post title
-       file :: String,     -- file to post
-       postid :: String    -- id of a post to updated
+       postid :: String,   -- id of a post to updated
+       file :: String      -- file to post
     } deriving (Show)
 
+defaultBlogLiterately :: BlogLiterately
 defaultBlogLiterately = BlogLiterately {
   showHelp = False,
   showVersion = False,
   verbosity = NormalVerbosity,
-  standalone = False,
+  mode = Nothing,
   style = "",
   hshighlight = HsColourInline defaultStylePrefs,
   highlightOther = False,
@@ -419,12 +417,8 @@ defaultBlogLiterately = BlogLiterately {
   categories = [],
   keywords = [],
   blogid = "default",
-  blog = "",
-  user = "",
-  password = "",
-  title = "",
-  file = "",
-  postid = ""
+  postid = "",
+  file = ""
   }
 
 -- And using CmdArgs, this bit of impure evil defines how the command line arguments
@@ -436,6 +430,14 @@ data Verbosity = LowVerbosity
                | HighVerbosity
                deriving (Eq,Show)
 
+data Mode = Standalone
+          | Online { blog :: String
+                   , user :: String
+                   , password :: String
+                   , title :: String
+                   }
+          deriving (Eq,Show)
+
 options :: [OptDescr (BlogLiterately -> BlogLiterately)]
 options =
   [ Option "?" ["help"] (NoArg (\opts -> opts { showHelp = True })) "Show usage information"
@@ -443,7 +445,7 @@ options =
 -- not used
 --  , Option "v" ["verbose"] (NoArg (\opts -> opts { verbosity = HighVerbosity })) "Higher verbosity"
 --  , Option "q" ["quiet"] (NoArg (\opts -> opts { verbosity = LowVerbosity })) "Lower verbosity"
-  , Option "s" ["standalone"] (NoArg (\opts -> opts { standalone = True })) "run standalone; html goes to stdout, it's not uploaded"
+  , Option "s" ["standalone"] (NoArg (\opts -> opts { mode = Just Standalone })) "run standalone; html goes to stdout, it's not uploaded"
   , Option "" ["style"] (ReqArg (\o opts -> opts { style = o}) "FILE") "Style Specification (for --hscolour-icss)"
   , Option ""  ["hscolour-icss"] (NoArg (\opts -> opts { hshighlight = HsColourInline defaultStylePrefs }))
                                                                        "hilight haskell: hscolour, inline style (default)"
@@ -463,46 +465,54 @@ options =
 -- The main blogging function uses the information captured in the `BlogLiterately`
 -- type to read the style preferences, read the input file and transform it, and
 -- post it to the blog:
-
-blogLiterately (BlogLiterately _ _ _ standalone style hsmode other pub cats keywords blogid url
-        user pw title file postid) = do
+blogLiterately :: BlogLiterately -> IO ()
+blogLiterately (BlogLiterately _ _ _ (Just mode) style hsmode other pub cats keywords blogid postid file) = do
     prefs <- getStylePrefs style
     let hsmode' = case hsmode of
             HsColourInline _ -> HsColourInline prefs
             _ -> hsmode
     html <- liftM (xformDoc hsmode' other) $ U.readFile file
-    if standalone
-       then putStr html
-       else if null postid 
+    case mode of
+      Standalone -> putStr html
+      Online {..} ->
+       if null postid 
            then do
-               postid <- postIt url blogid user pw title html cats keywords pub
-               putStrLn $ "post Id: " ++ postid
+               newpostid <- postIt blog blogid user password title html cats keywords pub
+               putStrLn $ "post Id: " ++ newpostid
            else do
-               result <- updateIt url postid user pw title html cats keywords pub
+               result <- updateIt blog postid user password title html cats keywords pub
                unless result $ putStrLn "update failed!"
+blogLiterately _ = die "blogLiterately: internal error"
 
 -- And the main program is simply:
 
-main = getArgs >>= parseArgs >>= blogLiterately
+main :: IO ()
+main = do
+  bl <- getArgs >>= parseArgs
+  case mode bl of
+    Nothing -> printUsage >> exitSuccess
+    Just _ -> blogLiterately bl
  
 parseArgs :: [String] -> IO BlogLiterately
 parseArgs args = do
   case runFlags $ getOpt Permute options args of
     (opts, _, _) | showHelp opts -> printUsage >> exitSuccess
                  | showVersion opts -> putStrLn copyright >> exitSuccess
-    (opts, [file], []) | standalone opts -> do
+    (opts, [file], []) | mode opts == Just Standalone -> do
       return opts { file = file }       
     (opts, [url, user, password, title, file], []) -> do
-      return opts { blog = url, user = user, password = password, title = title, file = file }
+      return opts { mode = Just (Online url user password title), file = file }
     (_, _, err) | not (null err) -> die (unlines err)
-    o -> printUsage >> exitSuccess
+    _ -> printUsage >> exitSuccess
  
  where accum flags = foldr (flip (.)) id flags defaultBlogLiterately
        runFlags (opts, nonOpts, errs) = (accum opts, nonOpts, errs)
 
+copyright :: String
 copyright = "BlogLiterately v0.3, (C) Robert Greayer 2010\n" ++
             "This program comes with ABSOLUTELY NO WARRANTY\n"
 
+usage :: String -> String
 usage prg = "\n" ++ prg
               ++ " [ --standalone | BLOG USER PASSWORD TITLE ] [options] <markdown-file>"
               ++ "\n\nOptions:"
