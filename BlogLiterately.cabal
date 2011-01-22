@@ -156,6 +156,6 @@ Executable BlogLiterately
                   hscolour >= 1.15 && < 1.18, xhtml >= 3000.2 && < 3000.3,
                   haxr >= 3000.2.1 && < 3000.9, pandoc >= 1.2 && < 1.7
 
-  Main-Is:        BlogLiterately.lhs
+  Main-Is:        BlogLiterately.hs
   Hs-Source-Dirs: src
   Ghc-Options: -fwarn-unused-imports -Wall
