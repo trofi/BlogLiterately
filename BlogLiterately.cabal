@@ -56,7 +56,7 @@ Description:     BlogLiterately is a tool for uploading web log posts to web log
                  >     , ("hs-layout","color: red;")
                  >     , ("hs-comment","color: green;")
                  >     , ("hs-conid", "")
-                 >     , ("hs-varid", "")<<<<<<< HEAD
+                 >     , ("hs-varid", "")
                  >     , ("hs-conop", "")
                  >     , ("hs-varop", "")
                  >     , ("hs-str", "color: teal;")
