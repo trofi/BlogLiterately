@@ -32,6 +32,7 @@ use GetOpt in base for that:
 
 > import System.Console.GetOpt
 > import System.Environment ( getArgs )
+> import System.Exit ( exitSuccess, exitFailure )
 
 I'm going to end up needing to parse and manipulate XHTML, so I'll use Malcolm
 Wallace's [HaXml][] XML combinators:
@@ -442,7 +443,7 @@ work:
 > -- not used
 > --  , Option "v" ["verbose"] (NoArg (\opts -> opts { verbosity = HighVerbosity })) "Higher verbosity"
 > --  , Option "q" ["quiet"] (NoArg (\opts -> opts { verbosity = LowVerbosity })) "Lower verbosity"
->   , Option "s" ["standalone"] (NoArg (\opts -> opts { standalone = True })) "run standalone; html goes to stdout, is not posted"
+>   , Option "s" ["standalone"] (NoArg (\opts -> opts { standalone = True })) "run standalone; html goes to stdout, it's not uploaded"
 >   , Option "" ["style"] (ReqArg (\o opts -> opts { style = o}) "FILE") "Style Specification (for --hscolour-icss)"
 >   , Option ""  ["hscolour-icss"] (NoArg (\opts -> opts { hshighlight = HsColourInline defaultStylePrefs }))
 >                                                                        "hilight haskell: hscolour, inline style (default)"
@@ -458,14 +459,6 @@ work:
 >   , Option "b" ["blogid"] (ReqArg (\v opts -> opts { blogid = v }) "VALUE") "Blog specific identifier"
 >   , Option ""  ["postid"] (ReqArg (\v opts -> opts { postid = v }) "VALUE") "Post to replace (if any)"
 >   ]
-
- bl = mode $ BlogLiterately {
-     blog = def &= argPos 0 & typ "URL" 
-         & text "URL of blog's xmlrpc address (e.g. http://example.com/blog/xmlrpc.php)",
-     user = def &= argPos 1 & typ "USER" & text "blog author's user name" ,
-     password = def &= argPos 2 & typ "PASSWORD" & text "blog author's password",
-     title = def &= argPos 3 & typ "TITLE",
-     file = def &=  argPos 4 & typ "FILE" & text "literate haskell file",
 
 The main blogging function uses the information captured in the `BlogLiterately`
 type to read the style preferences, read the input file and transform it, and
@@ -491,27 +484,34 @@ post it to the blog:
 And the main program is simply:
 
 > main = getArgs >>= parseArgs >>= blogLiterately
->    where info = "BlogLiterately v0.3, (C) Robert Greayer 2010\n" ++
->                 "This program comes with ABSOLUTELY NO WARRANTY\n"
-
+>
 > parseArgs :: [String] -> IO BlogLiterately
 > parseArgs args = do
 >   case runFlags $ getOpt Permute options args of
->     (opts, _, _) | showHelp opts -> die "show help"
->                  | showVersion opts -> die "show version"
+>     (opts, _, _) | showHelp opts -> printUsage >> exitSuccess
+>                  | showVersion opts -> putStrLn copyright >> exitSuccess
 >     (opts, [file], []) | standalone opts -> do
 >       return opts { file = file }       
 >     (opts, [url, user, password, title, file], []) -> do
 >       return opts { blog = url, user = user, password = password, title = title, file = file }
 >     (_, _, err) | not (null err) -> die (unlines err)
->     o -> die (show o)
+>     o -> printUsage >> exitSuccess
 >  
 >  where accum flags = foldr (flip (.)) id flags defaultBlogLiterately
 >        runFlags (opts, nonOpts, errs) = (accum opts, nonOpts, errs)
 
-> die :: String -> IO a
-> die str = error str
+> copyright = "BlogLiterately v0.3, (C) Robert Greayer 2010\n" ++
+>             "This program comes with ABSOLUTELY NO WARRANTY\n"
 
+> usage prg = "\n" ++ prg
+>               ++ " [ --standalone | BLOG USER PASSWORD TITLE ] [options] <markdown-file>"
+>               ++ "\n\nOptions:"
+
+> die :: String -> IO a
+> die str = putStrLn str >> exitFailure
+
+> printUsage :: IO ()
+> printUsage = putStrLn (usageInfo (copyright ++ usage "BlogLiterately") options)
 
 I can run it to get some help:
 
