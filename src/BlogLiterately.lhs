@@ -499,8 +499,10 @@ And the main program is simply:
 >   case runFlags $ getOpt Permute options args of
 >     (opts, _, _) | showHelp opts -> die "show help"
 >                  | showVersion opts -> die "show version"
+>     (opts, [file], []) | standalone opts -> do
+>       return opts { file = file }       
 >     (opts, [url, user, password, title, file], []) -> do
->        return opts { blog = url, user = user, password = password, title = title, file = file }
+>       return opts { blog = url, user = user, password = password, title = title, file = file }
 >     (_, _, err) | not (null err) -> die (unlines err)
 >     o -> die (show o)
 >  
