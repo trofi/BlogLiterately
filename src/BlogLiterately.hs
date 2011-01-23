@@ -498,7 +498,6 @@ extToMarkup file = case takeExtension file of
 -- post it to the blog:
 blogLiterately :: BlogLiterately -> IO ()
 blogLiterately (BlogLiterately _ _ _ (Just mode) style hsmode other pub cats keywords blogid postid file (Just markup)) = do
-    print markup >> exitFailure
     prefs <- getStylePrefs style
     let hsmode' = case hsmode of
             HsColourInline _ -> HsColourInline prefs
