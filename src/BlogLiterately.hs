@@ -289,16 +289,23 @@ colouriseCodeBlock _ _ b = b
 colourisePandoc hsHilite otherHilite (Pandoc m blocks) = 
     Pandoc m $ map (colouriseCodeBlock hsHilite otherHilite) blocks
 
+data FileMarkup = Markdown
+                | RST
+    deriving Show
+
 -- Transforming a complete input document string to an HTML output string:
 
-xformDoc :: HsHighlight -> Bool -> String -> String
-xformDoc hsHilite otherHilite s = 
+xformDoc :: FileMarkup -> HsHighlight -> Bool -> String -> String
+xformDoc markup hsHilite otherHilite s =
     showHtmlFragment 
     $ writeHtml writeOpts -- from Pandoc
     $ colourisePandoc hsHilite otherHilite
-    $ readMarkdown parseOpts -- from Pandoc
+    $ pandoc_parser parseOpts -- from Pandoc
     $ fixLineEndings s
-    where writeOpts = defaultWriterOptions {
+    where pandoc_parser = case markup of
+                                 Markdown -> readMarkdown
+                                 RST      -> readRST
+          writeOpts = defaultWriterOptions {
               --writerLiterateHaskell = True,
               writerReferenceLinks = True }
           parseOpts = defaultParserState { 
@@ -401,7 +408,8 @@ data BlogLiterately = BlogLiterately {
        blogid :: String,   -- blog-specific identifier (e.g. for blogging
                                -- software handling multiple blogs)
        postid :: String,   -- id of a post to updated
-       file :: String      -- file to post
+       file :: String,     -- file to post
+       file_markup :: FileMarkup
     } deriving (Show)
 
 defaultBlogLiterately :: BlogLiterately
@@ -418,7 +426,8 @@ defaultBlogLiterately = BlogLiterately {
   keywords = [],
   blogid = "default",
   postid = "",
-  file = ""
+  file = "",
+  file_markup = Markdown
   }
 
 -- And using CmdArgs, this bit of impure evil defines how the command line arguments
@@ -460,18 +469,24 @@ options =
   , Option ""  ["tag"] (ReqArg (\v opts -> opts { keywords = keywords opts ++ [v] }) "VALUE") "set tag (can specify more than one)"
   , Option "b" ["blogid"] (ReqArg (\v opts -> opts { blogid = v }) "VALUE") "Blog specific identifier"
   , Option ""  ["postid"] (ReqArg (\v opts -> opts { postid = v }) "VALUE") "Post to replace (if any)"
+  , Option "m" ["markup"] (ReqArg (\v opts -> opts { file_markup = to_markup v }) "VALUE") "File markup language: 'markdown' (default) or 'rst'"
   ]
+  where to_markup :: String -> FileMarkup
+        to_markup s = case s of
+                          "markdown" -> Markdown
+                          "rst"      -> RST
+                          _          -> error "bad markup"
 
 -- The main blogging function uses the information captured in the `BlogLiterately`
 -- type to read the style preferences, read the input file and transform it, and
 -- post it to the blog:
 blogLiterately :: BlogLiterately -> IO ()
-blogLiterately (BlogLiterately _ _ _ (Just mode) style hsmode other pub cats keywords blogid postid file) = do
+blogLiterately (BlogLiterately _ _ _ (Just mode) style hsmode other pub cats keywords blogid postid file markup) = do
     prefs <- getStylePrefs style
     let hsmode' = case hsmode of
             HsColourInline _ -> HsColourInline prefs
             _ -> hsmode
-    html <- liftM (xformDoc hsmode' other) $ U.readFile file
+    html <- liftM (xformDoc markup hsmode' other) $ U.readFile file
     case mode of
       Standalone -> putStr html
       Online {..} ->
