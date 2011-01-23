@@ -436,10 +436,6 @@ defaultBlogLiterately = BlogLiterately {
   file_markup = Nothing
   }
 
--- And using CmdArgs, this bit of impure evil defines how the command line arguments
--- work:
-
-
 data Verbosity = LowVerbosity
                | NormalVerbosity
                | HighVerbosity
@@ -511,8 +507,6 @@ blogLiterately (BlogLiterately _ _ _ (Just mode) style hsmode other pub cats key
                result <- updateIt blog postid user password title html cats keywords pub
                unless result $ putStrLn "update failed!"
 blogLiterately _ = die "blogLiterately: internal error"
-
--- And the main program is simply:
 
 main :: IO ()
 main = do
