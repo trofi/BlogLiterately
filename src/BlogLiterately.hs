@@ -259,7 +259,7 @@ replaceBreaks s = verbatim $ filtDoc (xmlParse "input" s) where
 -- highlighting of non-Haskell has been selected.
 
 colouriseCodeBlock :: HsHighlight -> Bool -> Block -> Block
-colouriseCodeBlock hsHilite otherHilite b@(CodeBlock attr@(_,classes,_) s) =
+colouriseCodeBlock hsHilite otherHilite b@(CodeBlock attr@(_,classes,_) some_code) =
     if tag == "haskell" || haskell
         then case hsHilite of
             HsColourInline style -> 
@@ -273,10 +273,13 @@ colouriseCodeBlock hsHilite otherHilite b@(CodeBlock attr@(_,classes,_) s) =
             then case tag of
                 "" -> myHiliteK attr src
                 t -> myHiliteK ("",[t],[]) src
-            else RawHtml $ simpleHTML src     
-    where (tag,src) = if null classes then unTag s else ("",s)
+            else RawHtml $ simpleHTML src
+    where s = "\n" ++ some_code ++ "\n" -- kate refuses nice highlighting
+                                        -- when it does not see newlines
+                                        -- (our our mangling code sucks)
+          (tag,src) = if null classes then unTag s else ("",s)
           hsrc = if lit then prepend src else src
-          lit = "sourceCode" `elem` classes
+          lit = False -- "sourceCode" `elem` classes (avoid ugly '>')
           haskell = "haskell" `elem` classes
           simpleHTML s = "<pre><code>" ++ s ++ "</code></pre>"
           myHiliteK attr s = case highlightHtml attr s of
