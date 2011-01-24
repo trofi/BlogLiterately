@@ -1,0 +1,14 @@
+* Change project name :]
+
+* Add support for known places (accounts) to post akin ssh does.
+  So you could refer to resource you post by blog only URL or
+  some short alias if it's not ambiguous.
+
+  I think it's safe to break commandline interface and forbid passing
+  username/password from command prompt entirely.
+
+* Add support for grabbing Title, Tags and Category directly from post.
+  The starting plan is to add tag support in RST: :title:, :tag:, :category:.
+
+  The more advanced is to make up extraction of tags right from
+  article contents (maybe, not worth of it).
