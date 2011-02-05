@@ -65,7 +65,7 @@ import Data.Monoid
 --         = Plain [Inline]        -- ^ Plain text, not a paragraph
 --         | Para [Inline]         -- ^ Paragraph
 --         | CodeBlock Attr String -- ^ Code block (literal) with attributes
---         | RawHtml String        -- ^ Raw HTML block (literal)
+--         | RawBlock String        -- ^ Raw HTML block (literal)
 --         | BlockQuote [Block]    -- ^ Block quote (list of blocks)
 --         | OrderedList ListAttributes [[Block]] -- ^ Ordered list (attributes
 --                                 -- and a list of items, each a list of blocks)
@@ -153,7 +153,7 @@ unTag s = either (const ("",s)) id $ parse tag "" s
 
 -- To highlight the syntax using hscolour (which produces HTML), I'm going to
 -- need to transform the `String` from a `CodeBlock` element to a `String` 
--- suitable for the `RawHtml` element (because the hscolour library transforms
+-- suitable for the `RawBlock` element (because the hscolour library transforms
 -- Haskell text to HTML). Pandoc strips off the prepended &gt; characters from the
 -- literate Haskell, so I need to put them back, and also tell hscolour whether the
 -- source it is colouring is literate or not.  The hscolour function looks like:
@@ -256,7 +256,7 @@ replaceBreaks s = verbatim $ filtDoc (xmlParse "input" s) where
 -- highlighting-kate styles.
 --
 -- To completely colourise/highlight a `CodeBlock` we now can create a function
--- that transforms a `CodeBlock` into a `RawHtml` block, where the content contains
+-- that transforms a `CodeBlock` into a `RawBlock` block, where the content contains
 -- marked up Haskell (possibly with literate markers), or marked up non-Haskell, if
 -- highlighting of non-Haskell has been selected.
 
@@ -265,9 +265,9 @@ colouriseCodeBlock hsHilite otherHilite b@(CodeBlock attr@(_,classes,_) s) =
     if tag == "haskell" || haskell
         then case hsHilite of
             HsColourInline style -> 
-                RawHtml $ bakeStyles style $ colourIt lit src
-            HsColourCSS -> RawHtml $ colourIt lit src
-            HsNoHighlight -> RawHtml $ simpleHTML hsrc
+                RawBlock "html" $ bakeStyles style $ colourIt lit src
+            HsColourCSS -> RawBlock "html" $ colourIt lit src
+            HsNoHighlight -> RawBlock "html" $ simpleHTML hsrc
             HsKate -> if null tag 
                 then myHiliteK attr hsrc
                 else myHiliteK ("",tag:classes,[]) hsrc
@@ -275,15 +275,15 @@ colouriseCodeBlock hsHilite otherHilite b@(CodeBlock attr@(_,classes,_) s) =
             then case tag of
                 "" -> myHiliteK attr src
                 t -> myHiliteK ("",[t],[]) src
-            else RawHtml $ simpleHTML src
+            else RawBlock "html" $ simpleHTML src
     where (tag,src) = if null classes then unTag s else ("",s)
           hsrc = if lit then prepend src else src
           lit = False -- "sourceCode" `elem` classes (avoid ugly '>')
           haskell = "haskell" `elem` classes
           simpleHTML s = "<pre><code>" ++ s ++ "</code></pre>"
-          myHiliteK attr s = case highlightHtml attr s of
-              Left _ -> RawHtml $ simpleHTML s
-              Right html -> RawHtml $ replaceBreaks $ showHtmlFragment html
+          myHiliteK attr s = case highlightHtml True attr s of
+              Left _ -> RawBlock "html" $ simpleHTML s
+              Right html -> RawBlock "html" $ replaceBreaks $ showHtmlFragment html
 colouriseCodeBlock _ _ b = b
 
 -- Colourising a `Pandoc` document is simply:
