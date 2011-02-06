@@ -536,7 +536,7 @@ copyright = "BlogLiterately v0.3, (C) Robert Greayer 2010\n" ++
 
 usage :: String -> String
 usage prg = "\n" ++ prg
-              ++ " [ --standalone | BLOG USER PASSWORD TITLE ] [options] <markdown-file>"
+              ++ " [ --standalone | BLOG USER PASSWORD TITLE ] [options] <file>"
               ++ "\n\nOptions:"
 
 die :: String -> IO a
