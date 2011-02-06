@@ -65,7 +65,7 @@ import Data.Monoid
 --         = Plain [Inline]        -- ^ Plain text, not a paragraph
 --         | Para [Inline]         -- ^ Paragraph
 --         | CodeBlock Attr String -- ^ Code block (literal) with attributes
---         | RawBlock String        -- ^ Raw HTML block (literal)
+--         | RawBlock Bool String  -- ^ Raw HTML block (literal)
 --         | BlockQuote [Block]    -- ^ Block quote (list of blocks)
 --         | OrderedList ListAttributes [[Block]] -- ^ Ordered list (attributes
 --                                 -- and a list of items, each a list of blocks)
