@@ -413,7 +413,7 @@ data BlogLiterately = BlogLiterately {
        keywords :: [String], -- tag list
        blogid :: String,   -- blog-specific identifier (e.g. for blogging
                                -- software handling multiple blogs)
-       postid :: String,   -- id of a post to updated
+       postid :: Maybe String,   -- id of a post to updated
        file :: String,     -- file to post
        file_markup :: Maybe FileMarkup
     } deriving (Show)
@@ -431,7 +431,7 @@ defaultBlogLiterately = BlogLiterately {
   categories = [],
   keywords = [],
   blogid = "default",
-  postid = "",
+  postid = Nothing,
   file = "",
   file_markup = Nothing
   }
@@ -470,7 +470,7 @@ options =
   , Option ""  ["category"] (ReqArg (\v opts -> opts { categories = categories opts ++ [v] }) "VALUE") "post category (can specify more than one)"
   , Option ""  ["tag"] (ReqArg (\v opts -> opts { keywords = keywords opts ++ [v] }) "VALUE") "set tag (can specify more than one)"
   , Option "b" ["blogid"] (ReqArg (\v opts -> opts { blogid = v }) "VALUE") "Blog specific identifier"
-  , Option ""  ["postid"] (ReqArg (\v opts -> opts { postid = v }) "VALUE") "Post to replace (if any)"
+  , Option ""  ["postid"] (ReqArg (\v opts -> opts { postid = Just v }) "VALUE") "Post to replace (if any)"
   , Option "m" ["markup"] (ReqArg (\v opts -> opts { file_markup = Just (to_markup v) }) "VALUE") "File markup language: 'markdown' (default) or 'rst'"
   ]
   where to_markup :: String -> FileMarkup
@@ -499,13 +499,17 @@ blogLiterately (BlogLiterately _ _ _ (Just mode) style hsmode other pub cats key
     case mode of
       Standalone -> putStr html
       Online {..} ->
-       if null postid 
-           then do
-               newpostid <- postIt blog blogid user password title html cats keywords pub
-               putStrLn $ "post Id: " ++ newpostid
-           else do
-               result <- updateIt blog postid user password title html cats keywords pub
-               unless result $ putStrLn "update failed!"
+        case postid of
+          Nothing -> do
+             newpostid <- postIt blog "" user password title html cats keywords pub
+             putStrLn $ "Success!"
+             putStrLn $ "Please edit your document to include the new postid!"
+             putStrLn $ ":PostID: " ++ newpostid
+          Just postidStr -> do
+             result <- updateIt blog postidStr user password title html cats keywords pub
+             if result
+              then putStrLn $ "Success!"
+              else putStrLn "update failed!"
 blogLiterately _ = die "blogLiterately: internal error"
 
 main :: IO ()
