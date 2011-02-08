@@ -490,7 +490,7 @@ options =
   , Option ""  ["category"] (ReqArg (\v opts -> opts { categories = categories opts ++ [v] }) "VALUE") "post category (can specify more than one)"
   , Option ""  ["tag"] (ReqArg (\v opts -> opts { keywords = keywords opts ++ [v] }) "VALUE") "set tag (can specify more than one)"
   , Option "b" ["blogid"] (ReqArg (\v opts -> opts { blogid = v }) "VALUE") "Blog specific identifier"
-  , Option ""  ["postid"] (ReqArg (\v opts -> opts { postid = Just v }) "VALUE") "Post to replace (override from document, if any)"
+  , Option ""  ["postid"] (ReqArg (\v opts -> opts { postid = Just v }) "VALUE") "Post to replace (override value from document)"
   , Option "m" ["markup"] (ReqArg (\v opts -> opts { file_markup = Just (to_markup v) }) "VALUE") "File markup language: 'markdown' (default) or 'rst'"
   ]
   where to_markup :: String -> FileMarkup
@@ -568,9 +568,20 @@ copyright = "BlogLiterately v0.3, (C) Robert Greayer 2010\n" ++
             "This program comes with ABSOLUTELY NO WARRANTY\n"
 
 usage :: String -> String
-usage prg = "\n" ++ prg
-              ++ " [ --standalone | BLOG USER PASSWORD ] [options] <file>"
-              ++ "\n\nOptions:"
+usage prg = unlines
+              [ ""
+              , "Usage:"
+              , ""
+              , "  " ++ prg ++ " [ --standalone | BLOG USER PASSWORD ] [options] <file>"
+              , ""
+              , "Fields in the RST file:"
+              , "(required)  :Title: the title for the blog post"
+              , "(optional)  :PostID: 123"
+              , ""
+              , "The PostID can be overriden via the command line with --postid=VALUE, see below."
+              , ""
+              , "Options:"
+              ]
 
 die :: String -> IO a
 die str = putStrLn str >> exitFailure
