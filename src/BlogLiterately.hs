@@ -301,26 +301,47 @@ instance Monoid FileMarkup where
 
 -- Transforming a complete input document string to an HTML output string:
 
-xformDoc :: FileMarkup -> HsHighlight -> Bool -> String -> String
-xformDoc markup hsHilite otherHilite s =
+parseDocument :: FileMarkup -> String -> Either String (String, Maybe String, Pandoc) 
+parseDocument markup s = do
+  title <- if null . docTitle $ meta
+            -- we need a title in the document
+            then Left "Please add a :Title: to your document"
+            -- render the title into text
+            else return $ writeHtmlString defaultWriterOptions (Pandoc (Meta [] [] []) ([Plain (docTitle meta)]))
+
+  let (postId, decl') = extractPostID decl
+
+  return (title, postId, Pandoc (Meta [] [] []) decl')
+  where
+    doc@(Pandoc meta decl) = pandoc_parser parseOpts $ fixLineEndings s
+    pandoc_parser = case markup of
+                     Markdown -> readMarkdown
+                     RST      -> readRST
+    parseOpts = defaultParserState { 
+        stateLiterateHaskell = True }
+    -- pandoc is picky about line endings
+    fixLineEndings [] = []
+    fixLineEndings ('\r':'\n':cs) = '\n':fixLineEndings cs
+    fixLineEndings (c:cs) = c:fixLineEndings cs
+
+    -- extract the postid from the document, if there is any
+    -- it's quite picky, must be on the format:
+    -- :PostID: 34
+    extractPostID :: [Block] -> (Maybe String, [Block])
+    extractPostID ((DefinitionList [([Str "PostID"], [[Para [Str postId]]])]) : rest) = (Just postId, rest)
+    extractPostID (other : rest) = let (postId,decl') = extractPostID rest in (postId, other:decl')
+    extractPostID [] = (Nothing, [])
+
+xformDoc :: HsHighlight -> Bool -> Pandoc -> String
+xformDoc hsHilite otherHilite doc =
     showHtmlFragment 
     $ writeHtml writeOpts -- from Pandoc
     $ colourisePandoc hsHilite otherHilite
-    $ pandoc_parser parseOpts -- from Pandoc
-    $ fixLineEndings s
-    where pandoc_parser = case markup of
-                                 Markdown -> readMarkdown
-                                 RST      -> readRST
-          writeOpts = defaultWriterOptions {
-              --writerLiterateHaskell = True,
-              writerReferenceLinks = True }
-          parseOpts = defaultParserState { 
-              stateLiterateHaskell = True }
-          -- readMarkdown is picky about line endings
-          fixLineEndings [] = []
-          fixLineEndings ('\r':'\n':cs) = '\n':fixLineEndings cs
-          fixLineEndings (c:cs) = c:fixLineEndings cs
-
+    $ doc
+  where
+     writeOpts = defaultWriterOptions {
+        --writerLiterateHaskell = True,
+        writerReferenceLinks = True }
 
 -- The metaWeblog API defines a `newPost` and  `editPost` procedures that look
 -- like:
@@ -413,7 +434,7 @@ data BlogLiterately = BlogLiterately {
        keywords :: [String], -- tag list
        blogid :: String,   -- blog-specific identifier (e.g. for blogging
                                -- software handling multiple blogs)
-       postid :: String,   -- id of a post to updated
+       postid :: Maybe String,   -- id of a post to updated
        file :: String,     -- file to post
        file_markup :: Maybe FileMarkup
     } deriving (Show)
@@ -431,7 +452,7 @@ defaultBlogLiterately = BlogLiterately {
   categories = [],
   keywords = [],
   blogid = "default",
-  postid = "",
+  postid = Nothing,
   file = "",
   file_markup = Nothing
   }
@@ -445,7 +466,6 @@ data Mode = Standalone
           | Online { blog :: String
                    , user :: String
                    , password :: String
-                   , title :: String
                    }
           deriving (Eq,Show)
 
@@ -470,7 +490,7 @@ options =
   , Option ""  ["category"] (ReqArg (\v opts -> opts { categories = categories opts ++ [v] }) "VALUE") "post category (can specify more than one)"
   , Option ""  ["tag"] (ReqArg (\v opts -> opts { keywords = keywords opts ++ [v] }) "VALUE") "set tag (can specify more than one)"
   , Option "b" ["blogid"] (ReqArg (\v opts -> opts { blogid = v }) "VALUE") "Blog specific identifier"
-  , Option ""  ["postid"] (ReqArg (\v opts -> opts { postid = v }) "VALUE") "Post to replace (if any)"
+  , Option ""  ["postid"] (ReqArg (\v opts -> opts { postid = Just v }) "VALUE") "Post to replace (override value from document)"
   , Option "m" ["markup"] (ReqArg (\v opts -> opts { file_markup = Just (to_markup v) }) "VALUE") "File markup language: 'markdown' (default) or 'rst'"
   ]
   where to_markup :: String -> FileMarkup
@@ -490,22 +510,35 @@ extToMarkup file = case takeExtension file of
 -- type to read the style preferences, read the input file and transform it, and
 -- post it to the blog:
 blogLiterately :: BlogLiterately -> IO ()
-blogLiterately (BlogLiterately _ _ _ (Just mode) style hsmode other pub cats keywords blogid postid file (Just markup)) = do
+blogLiterately (BlogLiterately _ _ _ (Just mode) style hsmode other pub cats keywords blogid cmd_postid file (Just markup)) = do
     prefs <- getStylePrefs style
     let hsmode' = case hsmode of
             HsColourInline _ -> HsColourInline prefs
             _ -> hsmode
-    html <- liftM (xformDoc markup hsmode' other) $ U.readFile file
-    case mode of
-      Standalone -> putStr html
-      Online {..} ->
-       if null postid 
-           then do
-               newpostid <- postIt blog blogid user password title html cats keywords pub
-               putStrLn $ "post Id: " ++ newpostid
-           else do
-               result <- updateIt blog postid user password title html cats keywords pub
-               unless result $ putStrLn "update failed!"
+    fileContent <- U.readFile file
+
+    case parseDocument markup fileContent of
+      Left err -> putStrLn $ err
+      Right (title, doc_postid, doc) -> do
+        let html = xformDoc hsmode' other doc
+        let postid = maybe doc_postid Just cmd_postid -- document postid can be overridden by command line
+        case mode of
+          Standalone -> do
+            putStrLn $ "<-- Title: " ++ title ++ " -->"
+            putStrLn $ "<-- PostID: " ++ maybe "none" id postid ++ " -->"
+            putStr html
+          Online {..} ->
+            case postid of
+              Nothing -> do
+                 newpostid <- postIt blog "" user password title html cats keywords pub
+                 putStrLn $ "Success!"
+                 putStrLn $ "Please edit your document to include the new postid!"
+                 putStrLn $ ":PostID: " ++ newpostid
+              Just postidStr -> do
+                 result <- updateIt blog postidStr user password title html cats keywords pub
+                 if result
+                  then putStrLn $ "Success!"
+                  else putStrLn "update failed!"
 blogLiterately _ = die "blogLiterately: internal error"
 
 main :: IO ()
@@ -522,8 +555,8 @@ parseArgs args = do
                  | showVersion opts -> putStrLn copyright >> exitSuccess
     (opts, [file], []) | mode opts == Just Standalone -> do
       return opts { file = file }       
-    (opts, [url, user, password, title, file], []) -> do
-      return opts { mode = Just (Online url user password title), file = file }
+    (opts, [url, user, password, file], []) -> do
+      return opts { mode = Just (Online url user password), file = file }
     (_, _, err) | not (null err) -> die (unlines err)
     _ -> printUsage >> exitSuccess
  
@@ -535,9 +568,20 @@ copyright = "BlogLiterately v0.3, (C) Robert Greayer 2010\n" ++
             "This program comes with ABSOLUTELY NO WARRANTY\n"
 
 usage :: String -> String
-usage prg = "\n" ++ prg
-              ++ " [ --standalone | BLOG USER PASSWORD TITLE ] [options] <file>"
-              ++ "\n\nOptions:"
+usage prg = unlines
+              [ ""
+              , "Usage:"
+              , ""
+              , "  " ++ prg ++ " [ --standalone | BLOG USER PASSWORD ] [options] <file>"
+              , ""
+              , "Fields in the RST file:"
+              , "(required)  :Title: the title for the blog post"
+              , "(optional)  :PostID: 123"
+              , ""
+              , "The PostID can be overriden via the command line with --postid=VALUE, see below."
+              , ""
+              , "Options:"
+              ]
 
 die :: String -> IO a
 die str = putStrLn str >> exitFailure
