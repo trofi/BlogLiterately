@@ -32,7 +32,8 @@ import Network.XmlRpc.Internals
 -- use GetOpt in base for that:
 
 import System.Console.GetOpt
-import System.Environment ( getArgs )
+import System.Directory (doesFileExist)
+import System.Environment (getArgs, getEnv)
 import System.Exit ( exitSuccess, exitFailure )
 import System.FilePath
 
@@ -49,6 +50,10 @@ import Control.Monad(liftM,unless)
 import Text.XHtml.Transitional(showHtmlFragment)
 import Text.ParserCombinators.Parsec
 import Data.Monoid
+
+import qualified Data.Map as M
+
+import Config
 
 -- The program will read in a literate Haskell file, use Pandoc to parse it as
 -- markdown, and, if it is using hscolour to for the Haskell pieces, will use
@@ -286,8 +291,7 @@ colouriseCodeBlock hsHilite otherHilite b@(CodeBlock attr@(_,classes,_) s) =
               Right html -> RawBlock "html" $ replaceBreaks $ showHtmlFragment html
 colouriseCodeBlock _ _ b = b
 
--- Colourising a `Pandoc` document is simply:
-
+colourisePandoc :: HsHighlight -> Bool -> Pandoc -> Pandoc
 colourisePandoc hsHilite otherHilite (Pandoc m blocks) = 
     Pandoc m $ map (colouriseCodeBlock hsHilite otherHilite) blocks
 
@@ -547,7 +551,26 @@ main = do
   case mode bl of
     Nothing -> printUsage >> exitSuccess
     Just _ -> blogLiterately bl { file_markup = mconcat [file_markup bl, extToMarkup (file bl), Just Markdown] }
- 
+
+get_auth_info :: BlogName -> IO BlogCred
+get_auth_info blog_name =
+    do home <- getEnv "HOME"
+       let config_file = home </> ".blogliterately" </> "config"
+       -- TODO: check permissions 600
+       yet <- doesFileExist config_file
+       if yet then return ()
+              else do putStrLn ("ERROR: config file" ++ config_file ++ " not found.\n")
+                      exitFailure
+       config <- readFile config_file
+       blogs <- case parse_config config_file config of
+                      Right b -> return b
+                      Left  e -> do putStrLn $ e
+                                    exitFailure
+       case M.lookup blog_name blogs of
+           Nothing -> do putStrLn $ "ERROR: " ++ blog_name ++ " was not found in config"
+                         exitFailure
+           Just b  -> return b
+
 parseArgs :: [String] -> IO BlogLiterately
 parseArgs args = do
   case runFlags $ getOpt Permute options args of
@@ -555,7 +578,8 @@ parseArgs args = do
                  | showVersion opts -> putStrLn copyright >> exitSuccess
     (opts, [file], []) | mode opts == Just Standalone -> do
       return opts { file = file }       
-    (opts, [url, user, password, file], []) -> do
+    (opts, [blog_name, file], []) -> do
+      BlogCred url _api user password <- get_auth_info blog_name
       return opts { mode = Just (Online url user password), file = file }
     (_, _, err) | not (null err) -> die (unlines err)
     _ -> printUsage >> exitSuccess
@@ -572,7 +596,7 @@ usage prg = unlines
               [ ""
               , "Usage:"
               , ""
-              , "  " ++ prg ++ " [ --standalone | BLOG USER PASSWORD ] [options] <file>"
+              , "  " ++ prg ++ " [ --standalone | BLOG_NAME ] [options] <file>"
               , ""
               , "Fields in the RST file:"
               , "(required)  :Title: the title for the blog post"
