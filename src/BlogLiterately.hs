@@ -45,6 +45,7 @@ import Text.XML.HaXml.Posn
 import Text.XML.HaXml.Verbatim
 
 import qualified System.IO.UTF8 as U
+import qualified Data.ByteString as BS
 
 import Control.Monad(liftM,unless)
 import Text.XHtml.Transitional(showHtmlFragment)
@@ -561,7 +562,7 @@ get_auth_info blog_name =
        if yet then return ()
               else do putStrLn ("ERROR: config file" ++ config_file ++ " not found.\n")
                       exitFailure
-       config <- readFile config_file
+       config <- BS.readFile config_file
        blogs <- case parse_config config_file config of
                       Right b -> return b
                       Left  e -> do putStrLn $ e

@@ -1,3 +1,4 @@
+{-# LANGUAGE OverloadedStrings #-}
 module Config
     ( BlogName
     , BlogCred(..)
@@ -8,7 +9,16 @@ module Config
 
 import Data.List
 import qualified Data.Map as M
-import Text.ParserCombinators.Parsec
+
+import Control.Applicative
+
+import qualified Data.ByteString as BS
+
+import Data.Attoparsec as P
+import Data.Attoparsec.Char8 ( anyChar, endOfLine, space )
+
+-- for tests
+import Data.Char ( ord )
 
 -- Blog URL or alias
 type BlogName = String
@@ -29,21 +39,20 @@ type BlogCreds = M.Map BlogName BlogCred
 --         foo
 --         "ba r"
 string_parser :: Parser String
-string_parser = manyTill anyChar (char '\n' <|> (eof >> return '\n'))
+string_parser = manyTill anyChar endOfLine
 
 proto_parser :: Parser BlogAPI
 proto_parser =
   string "api" >> many1 space >>
   choice
-    [ try (string "metaweblog") >> newline >> return MetaWeblog
-    ,     (string "wordpress" ) >> newline >> return MetaWeblog
+    [ try (string "metaweblog" >> endOfLine >> return MetaWeblog)
+    ,     (string "wordpress"  >> endOfLine >> return MetaWeblog)
     ]
 
 -- gets key value-string
 -- try is not very efficient, but we get nicer errors
-field_parser :: String -> Parser String
-field_parser field = try (do _ <- string field >> many1 space
-                             string_parser)
+field_parser :: BS.ByteString -> Parser String
+field_parser field = string field >> many1 space *> string_parser
 
 blog_entry_parser :: Parser (BlogCred, [BlogName])
 blog_entry_parser =
@@ -54,16 +63,16 @@ blog_entry_parser =
        user      <- field_parser "user"       <?> b_err "user <name>"
        password  <- field_parser "password"   <?> b_err "password <name>"
 
-       aliases <- many (field_parser "alias"  <?> b_err "alias <name>")
+       aliases <- P.many (field_parser "alias"  <?> b_err "alias <name>")
 
        return $ (BlogCred url proto user password, blog:aliases)
 
 -- returns an error or creds
-parse_config :: String -> String -> Either String BlogCreds
+parse_config :: String -> BS.ByteString -> Either String BlogCreds
 parse_config file_name file_contents =
-  case parse (many1 blog_entry_parser >>= \bs -> eof >> return bs) file_name file_contents of
-    Left err -> Left (show err)
-    Right blogs ->
+  case parse (many1 blog_entry_parser <* endOfInput) file_contents `feed` BS.empty of
+    Fail _ errstack err -> Left (unlines (("When parsing configuration file " ++ file_name):err:errstack))
+    Done _ blogs ->
       let flatten = [ (alias, cred)
                     | (cred, aliases) <- blogs
                     , alias <- nub aliases ]
@@ -72,28 +81,34 @@ parse_config file_name file_contents =
       in case map head $ filter (\lst -> length lst > 1) . groupBy (==) . sort . map fst $ flatten of
           [] -> Right $ M.fromList flatten
           dups -> Left $ "Found duplicate aliases: " ++ unwords dups
+    Partial _ -> error "internal error"
+
+s2bs :: String -> BS.ByteString
+s2bs = BS.pack . map (fromIntegral . ord)
 
 test :: IO ()
-test = do print $ parse blog_entry_parser "test1" $ unlines [ "blog foo"
-                                                            , "url u1"
-                                                            , "api wordpress"
-                                                            , "user u"
-                                                            , "password p"
-                                                            , "alias foo"
-                                                            , "alias bar"
-                                                            ]
-          print $ parse_config            "test2" $ unlines [ "blog foo1"
-                                                            , "url u1"
-                                                            , "api wordpress"
-                                                            , "user u"
-                                                            , "password p"
-                                                            , "alias foo1"
-                                                            , "alias bar2"
-                                                            , "blog foo2"
-                                                            , "url u1"
-                                                            , "api wordpress"
-                                                            , "user u3"
-                                                            , "password p3"
-                                                            , "alias foo3"
-                                                            , "alias bar4"
-                                                            ]
+test = do print $ parse_config "test1" $ s2bs
+                                       $ unlines [ "bloggie foo"
+                                                 , "url u1"
+                                                 , "api wordpress"
+                                                 , "user u"
+                                                 , "password p"
+                                                 , "alias foo"
+                                                 , "alias bar"
+                                                 ]
+          print $ parse_config "test2" $ s2bs
+                                       $ unlines [ "blog foo1"
+                                                 , "url u1"
+                                                 , "api wordpress"
+                                                 , "user u"
+                                                 , "password p"
+                                                 , "alias foo1"
+                                                 , "alias bar2"
+                                                 , "blog foo2"
+                                                 , "url u1"
+                                                 , "api wordpress"
+                                                 , "user u3"
+                                                 , "password p3"
+                                                 , "alias foo3"
+                                                 , "alias bar4"
+                                                 ]
