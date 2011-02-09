@@ -5,6 +5,9 @@
 
 module Main where
 
+import Data.Char
+import Data.List
+
 -- We need [Pandoc][] for parsing [Markdown][]:
 
 import Text.Pandoc
@@ -299,9 +302,16 @@ instance Monoid FileMarkup where
   mempty = Markdown
   mappend = const
 
+-- post metadata embedded to post
+data PostMeta = PostMeta { pm_title      :: String
+                         , pm_post_id    :: Maybe String
+                         , pm_tags       :: [String]
+                         , pm_categories :: [String]
+                         }
+
 -- Transforming a complete input document string to an HTML output string:
 
-parseDocument :: FileMarkup -> String -> Either String (String, Maybe String, Pandoc) 
+parseDocument :: FileMarkup -> String -> Either String (PostMeta, Pandoc)
 parseDocument markup s = do
   title <- if null . docTitle $ meta
             -- we need a title in the document
@@ -309,9 +319,10 @@ parseDocument markup s = do
             -- render the title into text
             else return $ writeHtmlString defaultWriterOptions (Pandoc (Meta [] [] []) ([Plain (docTitle meta)]))
 
-  let (postId, decl') = extractPostID decl
+  let initial_meta    = PostMeta title Nothing [] []
+      (meta, decl') = extractMeta initial_meta decl
 
-  return (title, postId, Pandoc (Meta [] [] []) decl')
+  return (meta, Pandoc (Meta [] [] []) decl')
   where
     doc@(Pandoc meta decl) = pandoc_parser parseOpts $ fixLineEndings s
     pandoc_parser = case markup of
@@ -324,13 +335,39 @@ parseDocument markup s = do
     fixLineEndings ('\r':'\n':cs) = '\n':fixLineEndings cs
     fixLineEndings (c:cs) = c:fixLineEndings cs
 
+    extractMeta :: PostMeta -> [Block] -> (PostMeta, [Block])
+    extractMeta p_meta (DefinitionList [] : rest) = extractMeta p_meta rest
+    extractMeta p_meta ((DefinitionList defs) : rest) =
+        let (p_meta',  decl')  = extractMetaFromDefs p_meta  defs
+            (p_meta'', decl'') = extractMeta         p_meta' rest
+        in (p_meta'', (if null decl' then id
+                                     else (DefinitionList decl':)) decl'')
+    extractMeta p_meta (other : rest) = let (p_meta', decl') = extractMeta p_meta rest in (p_meta', other:decl')
+    extractMeta p_meta [] = (p_meta, [])
+
     -- extract the postid from the document, if there is any
     -- it's quite picky, must be on the format:
     -- :PostID: 34
-    extractPostID :: [Block] -> (Maybe String, [Block])
-    extractPostID ((DefinitionList [([Str "PostID"], [[Para [Str postId]]])]) : rest) = (Just postId, rest)
-    extractPostID (other : rest) = let (postId,decl') = extractPostID rest in (postId, other:decl')
-    extractPostID [] = (Nothing, [])
+    -- :Categories: cat1, cat2
+    -- :Keywords: foo, bar, baz zapped
+    extractMetaFromDefs p_meta [] = (p_meta, [])
+    extractMetaFromDefs p_meta (def:defs) =
+        let eval_tail meta' = extractMetaFromDefs meta' defs
+            trim_spaces = reverse . dropWhile isSpace . reverse . dropWhile isSpace
+            to_string_list pandoc_markup = map trim_spaces
+                                         $ lines
+                                         $ map (\c -> if (c == ',') then '\n' else c) -- a little hack
+                                         $ writePlain defaultWriterOptions
+                                         $ Pandoc (Meta [] [] []) pandoc_markup
+        in case def of
+            ([Str "PostID"], [[Para [Str postId]]])
+                -> eval_tail p_meta{pm_post_id  = (pm_post_id p_meta) `mappend` Just postId}
+            ([Str "Categories"], [pandoc_categories])
+                -> eval_tail p_meta{pm_categories = (pm_categories p_meta) `mappend` to_string_list pandoc_categories}
+            ([Str "Keywords"], [pandoc_tags])
+                -> eval_tail p_meta{pm_tags = (pm_tags p_meta) `mappend` to_string_list pandoc_tags }
+            _   -> let (p_meta', decl') = eval_tail p_meta
+                   in  (p_meta', def:decl')
 
 xformDoc :: HsHighlight -> Bool -> Pandoc -> String
 xformDoc hsHilite otherHilite doc =
@@ -519,23 +556,27 @@ blogLiterately (BlogLiterately _ _ _ (Just mode) style hsmode other pub cats key
 
     case parseDocument markup fileContent of
       Left err -> putStrLn $ err
-      Right (title, doc_postid, doc) -> do
+      Right (PostMeta title doc_postid doc_tags doc_categories, doc) -> do
         let html = xformDoc hsmode' other doc
         let postid = maybe doc_postid Just cmd_postid -- document postid can be overridden by command line
+            tags   = doc_tags ++ keywords
+            categories = doc_categories ++ cats
         case mode of
           Standalone -> do
             putStrLn $ "<-- Title: " ++ title ++ " -->"
             putStrLn $ "<-- PostID: " ++ maybe "none" id postid ++ " -->"
-            putStr html
+            putStrLn $ "<-- Keywords: " ++ intercalate ", " tags ++ " -->"
+            putStrLn $ "<-- Caterogies: " ++ intercalate ", " categories ++ " -->"
+            putStrLn html
           Online {..} ->
             case postid of
               Nothing -> do
-                 newpostid <- postIt blog "" user password title html cats keywords pub
+                 newpostid <- postIt blog "" user password title html categories tags pub
                  putStrLn $ "Success!"
                  putStrLn $ "Please edit your document to include the new postid!"
                  putStrLn $ ":PostID: " ++ newpostid
               Just postidStr -> do
-                 result <- updateIt blog postidStr user password title html cats keywords pub
+                 result <- updateIt blog postidStr user password title html categories tags pub
                  if result
                   then putStrLn $ "Success!"
                   else putStrLn "update failed!"
@@ -577,6 +618,8 @@ usage prg = unlines
               , "Fields in the RST file:"
               , "(required)  :Title: the title for the blog post"
               , "(optional)  :PostID: 123"
+              , "(optional)  :Keywords: tag1, tag two, etc"
+              , "(optional)  :Categories: news, outer space"
               , ""
               , "The PostID can be overriden via the command line with --postid=VALUE, see below."
               , ""
