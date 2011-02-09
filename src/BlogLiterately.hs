@@ -361,11 +361,11 @@ parseDocument markup s = do
                                          $ Pandoc (Meta [] [] []) pandoc_markup
         in case def of
             ([Str "PostID"], [[Para [Str postId]]])
-                -> eval_tail p_meta{pm_post_id  = (pm_post_id p_meta) `mappend` Just postId}
+                -> eval_tail p_meta{pm_post_id  = maybe (Just postId) Just (pm_post_id p_meta)}
             ([Str "Categories"], [pandoc_categories])
-                -> eval_tail p_meta{pm_categories = (pm_categories p_meta) `mappend` to_string_list pandoc_categories}
+                -> eval_tail p_meta{pm_categories = (pm_categories p_meta) ++ to_string_list pandoc_categories}
             ([Str "Keywords"], [pandoc_tags])
-                -> eval_tail p_meta{pm_tags = (pm_tags p_meta) `mappend` to_string_list pandoc_tags }
+                -> eval_tail p_meta{pm_tags = (pm_tags p_meta) ++ to_string_list pandoc_tags }
             _   -> let (p_meta', decl') = eval_tail p_meta
                    in  (p_meta', def:decl')
 
