@@ -44,11 +44,10 @@ import System.FilePath
 
 import Text.XML.HaXml
 import Text.XML.HaXml.Posn
-import Text.XML.HaXml.Verbatim
 
 import qualified System.IO.UTF8 as U
 
-import Control.Monad(liftM,unless)
+import Control.Monad (liftM)
 import Text.XHtml.Transitional(showHtmlFragment)
 import Text.ParserCombinators.Parsec
 import Data.Monoid
@@ -178,6 +177,7 @@ unTag s = either (const ("",s)) id $ parse tag "" s
 -- class-based rendering into a inline style based rendering (for people who can't
 -- update their stylesheet).  `colourIt` performs the initial transformation:
 
+colourIt :: Bool -> String -> String
 colourIt literate srcTxt = 
     hscolour CSS defaultColourPrefs False True "" literate srcTxt'
     where srcTxt' | literate = prepend srcTxt
@@ -185,6 +185,7 @@ colourIt literate srcTxt =
   
 -- Prepending the literate Haskell markers on the source:
 
+prepend :: String -> String
 prepend s = unlines $ map ("> " ++) $ lines s
 
 -- Hscolour uses HTML `span` elements and CSS classes like 'hs-keyword' or 
@@ -199,6 +200,7 @@ type StylePrefs = [(String,String)]
 -- The default style that produces something like what the source listings
 -- on Hackage look like is now:
 
+defaultStylePrefs :: [([Char], [Char])]
 defaultStylePrefs = [
     ("hs-keyword","color: blue; font-weight: bold;")
   , ("hs-keyglyph","color: red;")
@@ -219,6 +221,7 @@ defaultStylePrefs = [
 -- I can read these preferences in from a file using the `Read` instance for
 -- `StylePrefs`.  I could handle errors better, but this should work:
 
+getStylePrefs :: [Char] -> IO [([Char], [Char])]
 getStylePrefs "" = return defaultStylePrefs
 getStylePrefs fname = liftM read (U.readFile fname)
 
@@ -291,6 +294,7 @@ colouriseCodeBlock _ _ b = b
 
 -- Colourising a `Pandoc` document is simply:
 
+colourisePandoc :: HsHighlight -> Bool -> Pandoc -> Pandoc
 colourisePandoc hsHilite otherHilite (Pandoc m blocks) = 
     Pandoc m $ map (colouriseCodeBlock hsHilite otherHilite) blocks
 
@@ -324,7 +328,7 @@ parseDocument markup s = do
 
   return (meta, Pandoc (Meta [] [] []) decl')
   where
-    doc@(Pandoc meta decl) = pandoc_parser parseOpts $ fixLineEndings s
+    Pandoc meta decl = pandoc_parser parseOpts $ fixLineEndings s
     pandoc_parser = case markup of
                      Markdown -> readMarkdown
                      RST      -> readRST
@@ -453,6 +457,7 @@ data HsHighlight = HsColourInline { hsStylePrefs :: StylePrefs }
 -- We can figure out if Pandoc is linked with highlighting-kate (we
 -- won't show the kate-related options if it isn't):
 
+noKate :: Bool
 noKate = null defaultHighlightingCss
 
 -- To create a command line program,  I can capture the command line controls in a type:
@@ -547,7 +552,7 @@ extToMarkup file = case takeExtension file of
 -- type to read the style preferences, read the input file and transform it, and
 -- post it to the blog:
 blogLiterately :: BlogLiterately -> IO ()
-blogLiterately (BlogLiterately _ _ _ (Just mode) style hsmode other pub cats keywords blogid cmd_postid file (Just markup)) = do
+blogLiterately (BlogLiterately _ _ _ (Just mode) style hsmode other pub cats keywords _blogid cmd_postid file (Just markup)) = do
     prefs <- getStylePrefs style
     let hsmode' = case hsmode of
             HsColourInline _ -> HsColourInline prefs
