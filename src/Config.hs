@@ -1,4 +1,20 @@
 {-# LANGUAGE OverloadedStrings #-}
+{-|
+  |  BlogLiterately Config file format:
+  |  It lives in ~/.blogliterately/config
+  |  Right now It is a sequence of blocks
+  |  describing blog accounts.
+  |
+  |  Each blog account must be in form:
+  |    blog <blog-name>
+  |    url <xml-rpc-url>
+  |    api <xml-api> ('metaweblog' or 'wordpress')
+  |    user <blog-username>
+  |    password <blog-password>
+  |    alias <alias-name>   (optional)
+  |    alias <more-aliases> (optional)
+  |    ...
+  |-}
 module Config
     ( BlogName
     , BlogCred(..)
