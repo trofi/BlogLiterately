@@ -488,7 +488,7 @@ options =
   , Option ""  ["hscolour-css"] (NoArg (\opts -> opts { hshighlight = HsColourCSS })) "hilight haskell: hscolour, separate stylesheet"
   , Option ""  ["hs-nohilight"] (NoArg (\opts -> opts { hshighlight = HsNoHighlight })) "no haskell hilighting"
   ] ++ concat [[ -- only if we have kate
-    Option ""  ["hs-kate"] (NoArg (\opts -> opts { hshighlight = HsKate })) "hilight other code with highlighting-kate"
+    Option ""  ["hs-kate"] (NoArg (\opts -> opts { hshighlight = HsKate })) "hilight haskell with highlighting-kate"
   , Option ""  ["other-code-kate"] (NoArg (\opts -> opts { highlightOther = True })) "hilight other code with highlighting-kate"
   ] | not noKate] ++ [
     Option ""  ["publish"] (NoArg (\opts -> opts { publish = True })) "Publish post (otherwise it's uploaded as a draft)"
