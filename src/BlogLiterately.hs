@@ -246,7 +246,7 @@ bakeStyles prefs s =  verbatim $ filtDoc (xmlParse "bake-input" s) where
     -- a style attribute when it has a specific 'class' attribute.
     filt (cls,style) =
         replaceAttrs [("style",style)] `when`
-            (attrval $ ("class",AttValue [Left cls]))
+            (attrval $ (N "class",AttValue [Left cls]))
 
 -- Highlighting-Kate uses &lt;br/> in code blocks to indicate newlines.  WordPress
 -- (if not other software) chooses to strip them away when found in &lt;pre> sections
