@@ -30,7 +30,7 @@ import Control.Applicative
 
 import qualified Data.ByteString as BS
 
-import Data.Attoparsec as P
+import Data.Attoparsec
 import Data.Attoparsec.Char8 ( anyChar, endOfLine, space )
 
 -- for tests
@@ -79,7 +79,7 @@ blog_entry_parser =
        user      <- field_parser "user"       <?> b_err "user <name>"
        password  <- field_parser "password"   <?> b_err "password <name>"
 
-       aliases <- P.many (field_parser "alias"  <?> b_err "alias <name>")
+       aliases <- many (field_parser "alias"  <?> b_err "alias <name>")
 
        return $ (BlogCred url proto user password, blog:aliases)
 
