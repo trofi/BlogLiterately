@@ -151,7 +151,7 @@ Build-Type:     Simple
 Extra-Source-Files: hscolour.css
                     kate.css
 Executable BlogLiterately
-  Build-Depends:  base >= 4.0 && < 4.5,
+  Build-Depends:  base >= 4.0 && < 5,
                   parsec >= 2.1.0.0 && < 3.2,
                   attoparsec,
                   bytestring,
