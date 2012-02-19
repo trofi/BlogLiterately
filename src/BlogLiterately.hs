@@ -8,6 +8,8 @@ module Main where
 import Data.Char
 import Data.List
 
+import Text.Blaze.Renderer.String (renderHtml)
+
 -- We need [Pandoc][] for parsing [Markdown][]:
 
 import Text.Pandoc
@@ -50,7 +52,6 @@ import qualified System.IO.UTF8 as U
 import qualified Data.ByteString as BS
 
 import Control.Monad (liftM)
-import Text.XHtml.Transitional(showHtmlFragment)
 import Text.ParserCombinators.Parsec
 import Data.Monoid
 
@@ -293,9 +294,9 @@ colouriseCodeBlock hsHilite otherHilite b@(CodeBlock attr@(_,classes,_) s) =
           lit = False -- "sourceCode" `elem` classes (avoid ugly '>')
           haskell = "haskell" `elem` classes
           simpleHTML s = "<pre><code>" ++ s ++ "</code></pre>"
-          myHiliteK attr s = case highlightHtml True attr s of
-              Left _ -> RawBlock "html" $ simpleHTML s
-              Right html -> RawBlock "html" $ replaceBreaks $ showHtmlFragment html
+          myHiliteK attr s = case highlight formatHtmlBlock attr s of
+              Nothing   -> RawBlock "html" $ simpleHTML s
+              Just html -> RawBlock "html" $ replaceBreaks $ renderHtml html
 colouriseCodeBlock _ _ b = b
 
 colourisePandoc :: HsHighlight -> Bool -> Pandoc -> Pandoc
@@ -379,7 +380,7 @@ parseDocument markup s = do
 
 xformDoc :: HsHighlight -> Bool -> Pandoc -> String
 xformDoc hsHilite otherHilite doc =
-    showHtmlFragment 
+    renderHtml
     $ writeHtml writeOpts -- from Pandoc
     $ colourisePandoc hsHilite otherHilite
     $ doc
@@ -456,14 +457,6 @@ data HsHighlight = HsColourInline { hsStylePrefs :: StylePrefs }
     | HsColourCSS | HsKate | HsNoHighlight
     deriving (Show,Eq)
 
--- And two modes for other code (off or on!).
---
--- We can figure out if Pandoc is linked with highlighting-kate (we
--- won't show the kate-related options if it isn't):
-
-noKate :: Bool
-noKate = null defaultHighlightingCss
-
 -- To create a command line program,  I can capture the command line controls in a type:
 
 data BlogLiterately = BlogLiterately {
@@ -528,11 +521,9 @@ options =
                                                                        "hilight haskell: hscolour, inline style (default)"
   , Option ""  ["hscolour-css"] (NoArg (\opts -> opts { hshighlight = HsColourCSS })) "hilight haskell: hscolour, separate stylesheet"
   , Option ""  ["hs-nohilight"] (NoArg (\opts -> opts { hshighlight = HsNoHighlight })) "no haskell hilighting"
-  ] ++ concat [[ -- only if we have kate
-    Option ""  ["hs-kate"] (NoArg (\opts -> opts { hshighlight = HsKate })) "hilight haskell with highlighting-kate"
+  , Option ""  ["hs-kate"] (NoArg (\opts -> opts { hshighlight = HsKate })) "hilight haskell with highlighting-kate"
   , Option ""  ["other-code-kate"] (NoArg (\opts -> opts { highlightOther = True })) "hilight other code with highlighting-kate"
-  ] | not noKate] ++ [
-    Option ""  ["publish"] (NoArg (\opts -> opts { publish = True })) "Publish post (otherwise it's uploaded as a draft)"
+  , Option ""  ["publish"] (NoArg (\opts -> opts { publish = True })) "Publish post (otherwise it's uploaded as a draft)"
   , Option ""  ["category"] (ReqArg (\v opts -> opts { categories = categories opts ++ [v] }) "VALUE") "post category (can specify more than one)"
   , Option ""  ["tag"] (ReqArg (\v opts -> opts { keywords = keywords opts ++ [v] }) "VALUE") "set tag (can specify more than one)"
   , Option "b" ["blogid"] (ReqArg (\v opts -> opts { blogid = v }) "VALUE") "Blog specific identifier"
