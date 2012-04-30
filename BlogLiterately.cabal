@@ -152,7 +152,7 @@ Extra-Source-Files: hscolour.css
                     kate.css
 Executable BlogLiterately
   Build-Depends:  base >= 4.0 && < 5,
-                  blaze-html == 0.4.*,
+                  blaze-html >= 0.5 && < 0.6,
                   parsec >= 2.1.0.0 && < 3.2,
                   attoparsec,
                   bytestring,

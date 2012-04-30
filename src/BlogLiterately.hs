@@ -8,7 +8,7 @@ module Main where
 import Data.Char
 import Data.List
 
-import Text.Blaze.Renderer.String (renderHtml)
+import Text.Blaze.Html.Renderer.String (renderHtml)
 
 -- We need [Pandoc][] for parsing [Markdown][]:
 
