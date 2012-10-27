@@ -159,7 +159,7 @@ Executable BlogLiterately
                   bytestring,
                   HaXml >= 1.22 && < 1.24,
                   utf8-string >= 0.3 && < 0.4,
-                  hscolour >= 1.15 && < 1.20,
+                  hscolour >= 1.15 && < 1.21,
                   xhtml >= 3000.2 && < 3000.3,
                   haxr >= 3000.2.1 && < 3000.10,
                   pandoc >= 1.9 && < 1.10,
