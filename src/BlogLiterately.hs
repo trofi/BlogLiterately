@@ -7,13 +7,15 @@ module Main where
 
 import Data.Char
 import Data.List
+import qualified Data.Set as S
 
 import Text.Blaze.Html.Renderer.String (renderHtml)
 
 -- We need [Pandoc][] for parsing [Markdown][]:
 
-import Text.Pandoc
-import Text.Pandoc.Highlighting
+import qualified Text.Pandoc as P
+import qualified Text.Pandoc.Options as PO
+import qualified Text.Highlighting.Kate as K
 
 -- And [hscolour][] for highlighting:
 
@@ -273,14 +275,14 @@ replaceBreaks s = verbatim $ filtDoc (xmlParse "input" s) where
 -- marked up Haskell (possibly with literate markers), or marked up non-Haskell, if
 -- highlighting of non-Haskell has been selected.
 
-colouriseCodeBlock :: HsHighlight -> Bool -> Block -> Block
-colouriseCodeBlock hsHilite otherHilite b@(CodeBlock attr@(_,classes,_) s) =
+colouriseCodeBlock :: HsHighlight -> Bool -> P.Block -> P.Block
+colouriseCodeBlock hsHilite otherHilite b@(P.CodeBlock attr@(_,classes,_) s) =
     if tag == "haskell" || haskell
         then case hsHilite of
             HsColourInline style -> 
-                RawBlock "html" $ bakeStyles style $ colourIt lit src
-            HsColourCSS -> RawBlock "html" $ colourIt lit src
-            HsNoHighlight -> RawBlock "html" $ simpleHTML hsrc
+                P.RawBlock "html" $ bakeStyles style $ colourIt lit src
+            HsColourCSS -> P.RawBlock "html" $ colourIt lit src
+            HsNoHighlight -> P.RawBlock "html" $ simpleHTML hsrc
             HsKate -> if null tag 
                 then myHiliteK attr hsrc
                 else myHiliteK ("",tag:classes,[]) hsrc
@@ -288,20 +290,18 @@ colouriseCodeBlock hsHilite otherHilite b@(CodeBlock attr@(_,classes,_) s) =
             then case tag of
                 "" -> myHiliteK attr src
                 t -> myHiliteK ("",[t],[]) src
-            else RawBlock "html" $ simpleHTML src
+            else P.RawBlock "html" $ simpleHTML src
     where (tag,src) = if null classes then unTag s else ("",s)
           hsrc = if lit then prepend src else src
           lit = False -- "sourceCode" `elem` classes (avoid ugly '>')
           haskell = "haskell" `elem` classes
           simpleHTML s = "<pre><code>" ++ s ++ "</code></pre>"
-          myHiliteK attr s = case highlight formatHtmlBlock attr s of
-              Nothing   -> RawBlock "html" $ simpleHTML s
-              Just html -> RawBlock "html" $ replaceBreaks $ renderHtml html
+          myHiliteK attr s = P.CodeBlock attr s
 colouriseCodeBlock _ _ b = b
 
-colourisePandoc :: HsHighlight -> Bool -> Pandoc -> Pandoc
-colourisePandoc hsHilite otherHilite (Pandoc m blocks) = 
-    Pandoc m $ map (colouriseCodeBlock hsHilite otherHilite) blocks
+colourisePandoc :: HsHighlight -> Bool -> P.Pandoc -> P.Pandoc
+colourisePandoc hsHilite otherHilite (P.Pandoc m blocks) =
+    P.Pandoc m $ map (colouriseCodeBlock hsHilite otherHilite) blocks
 
 data FileMarkup = Markdown
                 | RST
@@ -320,37 +320,37 @@ data PostMeta = PostMeta { pm_title      :: String
 
 -- Transforming a complete input document string to an HTML output string:
 
-parseDocument :: FileMarkup -> String -> Either String (PostMeta, Pandoc)
+parseDocument :: FileMarkup -> String -> Either String (PostMeta, P.Pandoc)
 parseDocument markup s = do
-  title <- if null . docTitle $ meta
+  title <- if null . P.docTitle $ meta
             -- we need a title in the document
             then Left "Please add a :Title: to your document"
             -- render the title into text
-            else return $ writeHtmlString defaultWriterOptions (Pandoc (Meta [] [] []) ([Plain (docTitle meta)]))
+            else return $ P.writeHtmlString PO.def (P.Pandoc (P.Meta [] [] []) ([P.Plain (P.docTitle meta)]))
 
   let initial_meta    = PostMeta title Nothing [] []
       (meta, decl') = extractMeta initial_meta decl
 
-  return (meta, Pandoc (Meta [] [] []) decl')
+  return (meta, P.Pandoc (P.Meta [] [] []) decl')
   where
-    Pandoc meta decl = pandoc_parser parseOpts $ fixLineEndings s
+    P.Pandoc meta decl = pandoc_parser parseOpts $ fixLineEndings s
     pandoc_parser = case markup of
-                     Markdown -> readMarkdown
-                     RST      -> readRST
-    parseOpts = defaultParserState { 
-        stateLiterateHaskell = True }
+                     Markdown -> P.readMarkdown
+                     RST      -> P.readRST
+    parseOpts = PO.def { PO.readerExtensions = S.singleton PO.Ext_literate_haskell
+                       }
     -- pandoc is picky about line endings
     fixLineEndings [] = []
     fixLineEndings ('\r':'\n':cs) = '\n':fixLineEndings cs
     fixLineEndings (c:cs) = c:fixLineEndings cs
 
-    extractMeta :: PostMeta -> [Block] -> (PostMeta, [Block])
-    extractMeta p_meta (DefinitionList [] : rest) = extractMeta p_meta rest
-    extractMeta p_meta ((DefinitionList defs) : rest) =
+    extractMeta :: PostMeta -> [P.Block] -> (PostMeta, [P.Block])
+    extractMeta p_meta (P.DefinitionList [] : rest) = extractMeta p_meta rest
+    extractMeta p_meta ((P.DefinitionList defs) : rest) =
         let (p_meta',  decl')  = extractMetaFromDefs p_meta  defs
             (p_meta'', decl'') = extractMeta         p_meta' rest
         in (p_meta'', (if null decl' then id
-                                     else (DefinitionList decl':)) decl'')
+                                     else (P.DefinitionList decl':)) decl'')
     extractMeta p_meta (other : rest) = let (p_meta', decl') = extractMeta p_meta rest in (p_meta', other:decl')
     extractMeta p_meta [] = (p_meta, [])
 
@@ -360,34 +360,34 @@ parseDocument markup s = do
     -- :Categories: cat1, cat2
     -- :Keywords: foo, bar, baz zapped
     extractMetaFromDefs p_meta [] = (p_meta, [])
-    extractMetaFromDefs p_meta (def:defs) =
+    extractMetaFromDefs p_meta (def1:defs) =
         let eval_tail meta' = extractMetaFromDefs meta' defs
             trim_spaces = reverse . dropWhile isSpace . reverse . dropWhile isSpace
             to_string_list pandoc_markup = map trim_spaces
                                          $ lines
                                          $ map (\c -> if (c == ',') then '\n' else c) -- a little hack
-                                         $ writePlain defaultWriterOptions
-                                         $ Pandoc (Meta [] [] []) pandoc_markup
-        in case def of
-            ([Str "PostID"], [[Para [Str postId]]])
+                                         $ P.writePlain PO.def
+                                         $ P.Pandoc (P.Meta [] [] []) pandoc_markup
+        in case def1 of
+            ([P.Str "PostID"], [[P.Para [P.Str postId]]])
                 -> eval_tail p_meta{pm_post_id  = maybe (Just postId) Just (pm_post_id p_meta)}
-            ([Str "Categories"], [pandoc_categories])
+            ([P.Str "Categories"], [pandoc_categories])
                 -> eval_tail p_meta{pm_categories = (pm_categories p_meta) ++ to_string_list pandoc_categories}
-            ([Str "Keywords"], [pandoc_tags])
+            ([P.Str "Keywords"], [pandoc_tags])
                 -> eval_tail p_meta{pm_tags = (pm_tags p_meta) ++ to_string_list pandoc_tags }
             _   -> let (p_meta', decl') = eval_tail p_meta
-                   in  (p_meta', def:decl')
+                   in  (p_meta', def1:decl')
 
-xformDoc :: HsHighlight -> Bool -> Pandoc -> String
+xformDoc :: HsHighlight -> Bool -> P.Pandoc -> String
 xformDoc hsHilite otherHilite doc =
     renderHtml
-    $ writeHtml writeOpts -- from Pandoc
+    $ P.writeHtml writeOpts -- from Pandoc
     $ colourisePandoc hsHilite otherHilite
     $ doc
   where
-     writeOpts = defaultWriterOptions {
+     writeOpts = PO.def {
         --writerLiterateHaskell = True,
-        writerReferenceLinks = True }
+        PO.writerReferenceLinks = True }
 
 -- The metaWeblog API defines a `newPost` and  `editPost` procedures that look
 -- like:
@@ -664,4 +664,3 @@ printUsage = putStrLn (usageInfo (copyright ++ usage "BlogLiterately") options)
 -- [hackage-haxr]: http://hackage.haskell.org/package/haxr
 -- [cmdargs]: http://community.haskell.org/~ndm/cmdargs/
 -- [haxml]: http://www.cs.york.ac.uk/fp/HaXml/
-

@@ -152,17 +152,18 @@ Extra-Source-Files: hscolour.css
                     kate.css
 Executable BlogLiterately
   Build-Depends:  base >= 4.0 && < 5,
-                  blaze-html >= 0.5 && < 0.6,
+                  blaze-html >= 0.5 && < 0.7,
                   blaze-markup >= 0.5 && < 0.6,
                   parsec >= 2.1.0.0 && < 3.2,
                   attoparsec,
                   bytestring,
-                  HaXml >= 1.22 && < 1.24,
+                  HaXml >= 1.22 && < 1.25,
                   utf8-string >= 0.3 && < 0.4,
                   hscolour >= 1.15 && < 1.21,
                   xhtml >= 3000.2 && < 3000.3,
                   haxr >= 3000.2.1 && < 3000.10,
-                  pandoc >= 1.9 && < 1.10,
+                  pandoc >= 1.11 && < 1.12,
+                  highlighting-kate >= 0.5.3.0,
                   filepath,
                   containers,
                   directory
