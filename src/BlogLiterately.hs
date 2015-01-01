@@ -14,6 +14,7 @@ import Text.Blaze.Html.Renderer.String (renderHtml)
 -- We need [Pandoc][] for parsing [Markdown][]:
 
 import qualified Text.Pandoc as P
+import qualified Text.Pandoc.Shared as P
 import qualified Text.Pandoc.Options as PO
 import qualified Text.Highlighting.Kate as K
 
@@ -280,9 +281,9 @@ colouriseCodeBlock hsHilite otherHilite b@(P.CodeBlock attr@(_,classes,_) s) =
     if tag == "haskell" || haskell
         then case hsHilite of
             HsColourInline style -> 
-                P.RawBlock "html" $ bakeStyles style $ colourIt lit src
-            HsColourCSS -> P.RawBlock "html" $ colourIt lit src
-            HsNoHighlight -> P.RawBlock "html" $ simpleHTML hsrc
+                P.RawBlock (P.Format "html") $ bakeStyles style $ colourIt lit src
+            HsColourCSS -> P.RawBlock (P.Format "html") $ colourIt lit src
+            HsNoHighlight -> P.RawBlock (P.Format "html") $ simpleHTML hsrc
             HsKate -> if null tag 
                 then myHiliteK attr hsrc
                 else myHiliteK ("",tag:classes,[]) hsrc
@@ -290,7 +291,7 @@ colouriseCodeBlock hsHilite otherHilite b@(P.CodeBlock attr@(_,classes,_) s) =
             then case tag of
                 "" -> myHiliteK attr src
                 t -> myHiliteK ("",[t],[]) src
-            else P.RawBlock "html" $ simpleHTML src
+            else P.RawBlock (P.Format "html") $ simpleHTML src
     where (tag,src) = if null classes then unTag s else ("",s)
           hsrc = if lit then prepend src else src
           lit = False -- "sourceCode" `elem` classes (avoid ugly '>')
@@ -326,12 +327,12 @@ parseDocument markup s = do
             -- we need a title in the document
             then Left "Please add a :Title: to your document"
             -- render the title into text
-            else return $ P.writeHtmlString PO.def (P.Pandoc (P.Meta [] [] []) ([P.Plain (P.docTitle meta)]))
+            else return $ P.writeHtmlString PO.def (P.Pandoc (P.makeMeta [] [] []) ([P.Plain (P.docTitle meta)]))
 
   let initial_meta    = PostMeta title Nothing [] []
       (meta, decl') = extractMeta initial_meta decl
 
-  return (meta, P.Pandoc (P.Meta [] [] []) decl')
+  return (meta, P.Pandoc (P.makeMeta [] [] []) decl')
   where
     P.Pandoc meta decl = pandoc_parser parseOpts $ fixLineEndings s
     pandoc_parser = case markup of
@@ -367,7 +368,7 @@ parseDocument markup s = do
                                          $ lines
                                          $ map (\c -> if (c == ',') then '\n' else c) -- a little hack
                                          $ P.writePlain PO.def
-                                         $ P.Pandoc (P.Meta [] [] []) pandoc_markup
+                                         $ P.Pandoc (P.makeMeta [] [] []) pandoc_markup
         in case def1 of
             ([P.Str "PostID"], [[P.Para [P.Str postId]]])
                 -> eval_tail p_meta{pm_post_id  = maybe (Just postId) Just (pm_post_id p_meta)}
