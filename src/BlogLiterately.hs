@@ -339,6 +339,8 @@ parseDocument markup s = do
                      Markdown -> P.readMarkdown
                      RST      -> P.readRST
     parseOpts = PO.def { PO.readerExtensions = S.singleton PO.Ext_literate_haskell
+                       -- allows insertion of :Title:
+                       , PO.readerStandalone = True
                        }
     -- pandoc is picky about line endings
     fixLineEndings [] = []
