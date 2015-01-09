@@ -16,7 +16,6 @@ import Text.Blaze.Html.Renderer.String (renderHtml)
 import qualified Text.Pandoc as P
 import qualified Text.Pandoc.Shared as P
 import qualified Text.Pandoc.Options as PO
-import qualified Text.Highlighting.Kate as K
 
 -- And [hscolour][] for highlighting:
 
@@ -158,7 +157,7 @@ unTag s = either (const ("",s)) id $ parse tag "" s
    where tag = do
              tg <- between (char '[') (char ']') $ many $ noneOf "[]"
              skipMany $ oneOf " \t"
-             (string "\r\n" <|> string "\n")
+             _ <- (string "\r\n" <|> string "\n")
              txt <- many $ anyToken
              eof
              return (tg,txt)
