@@ -155,7 +155,7 @@ Executable BlogLiterately
                   blaze-html >= 0.5,
                   blaze-markup >= 0.5,
                   parsec >= 2.1.0.0,
-                  attoparsec,
+                  attoparsec >= 0.12,
                   bytestring,
                   HaXml >= 1.22,
                   utf8-string >= 0.3,

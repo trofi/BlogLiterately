@@ -30,8 +30,8 @@ import Control.Applicative
 
 import qualified Data.ByteString as BS
 
-import Data.Attoparsec
-import Data.Attoparsec.Char8 ( anyChar, endOfLine, space )
+import Data.Attoparsec.ByteString
+import Data.Attoparsec.ByteString.Char8 ( anyChar, endOfLine, space )
 
 -- for tests
 import Data.Char ( ord )
