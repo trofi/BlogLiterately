@@ -325,18 +325,18 @@ data PostMeta = PostMeta { pm_title      :: String
 
 parseDocument :: FileMarkup -> String -> Either String (PostMeta, P.Pandoc)
 parseDocument markup s = do
-  title <- if null . P.docTitle $ meta
+  title <- if null . P.docTitle $ meta'
             -- we need a title in the document
             then Left "Please add a :Title: to your document"
             -- render the title into text
-            else return $ P.writeHtmlString PO.def (P.Pandoc (P.makeMeta [] [] []) ([P.Plain (P.docTitle meta)]))
+            else return $ P.writeHtmlString PO.def (P.Pandoc (P.makeMeta [] [] []) ([P.Plain (P.docTitle meta')]))
 
   let initial_meta    = PostMeta title Nothing [] []
-      (meta, decl') = extractMeta initial_meta decl
+      (final_meta, decl') = extractMeta initial_meta decl
 
-  return (meta, P.Pandoc (P.makeMeta [] [] []) decl')
+  return (final_meta, P.Pandoc (P.makeMeta [] [] []) decl')
   where
-    P.Pandoc meta decl = pandoc_parser parseOpts $ fixLineEndings s
+    P.Pandoc meta' decl = pandoc_parser parseOpts $ fixLineEndings s
     pandoc_parser = case markup of
                      Markdown -> P.readMarkdown
                      RST      -> P.readRST
@@ -366,7 +366,7 @@ parseDocument markup s = do
     -- :Keywords: foo, bar, baz zapped
     extractMetaFromDefs p_meta [] = (p_meta, [])
     extractMetaFromDefs p_meta (def1:defs) =
-        let eval_tail meta' = extractMetaFromDefs meta' defs
+        let eval_tail meta'' = extractMetaFromDefs meta'' defs
             trim_spaces = reverse . dropWhile isSpace . reverse . dropWhile isSpace
             to_string_list pandoc_markup = map trim_spaces
                                          $ lines
