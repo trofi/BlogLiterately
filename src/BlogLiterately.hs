@@ -9,7 +9,7 @@ import Data.Char
 import Data.List
 import qualified Data.Set as S
 
-import Text.Blaze.Html.Renderer.String (renderHtml)
+import qualified Text.Blaze.Html.Renderer.String as BH
 
 -- We need [Pandoc][] for parsing [Markdown][]:
 
@@ -382,7 +382,7 @@ parseDocument markup s = do
 
 xformDoc :: HsHighlight -> Bool -> P.Pandoc -> String
 xformDoc hsHilite otherHilite doc =
-    renderHtml
+    BH.renderHtml
     $ P.writeHtml writeOpts -- from Pandoc
     $ colourisePandoc hsHilite otherHilite
     $ doc
