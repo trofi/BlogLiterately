@@ -48,8 +48,8 @@ import System.FilePath
 -- I'm going to end up needing to parse and manipulate XHTML, so I'll use Malcolm
 -- Wallace's [HaXml][] XML combinators:
 
-import Text.XML.HaXml
-import Text.XML.HaXml.Posn
+import qualified Text.XML.HaXml as HaXml
+import qualified Text.XML.HaXml.Posn as HaXml
 
 import qualified System.IO.UTF8 as U
 import qualified Data.ByteString as BS
@@ -240,29 +240,31 @@ getStylePrefs fname = liftM read (U.readFile fname)
 -- and then re-render it as a `String`.  Use HaXml to do all of this:
 
 bakeStyles :: StylePrefs -> String -> String
-bakeStyles prefs s =  verbatim $ filtDoc (xmlParse "bake-input" s) where
+bakeStyles prefs s =  HaXml.verbatim $ filtDoc (HaXml.xmlParse "bake-input" s) where
     -- filter the document (an Hscoloured fragment of Haskell source)
-    filtDoc (Document p s e m) =  c where
-        [c] = filts (CElem e noPos)
+    filtDoc (HaXml.Document p s e m) =  c where
+        [c] = filts (HaXml.CElem e HaXml.noPos)
     -- the filter is a fold of individual filters for each CSS class
-    filts = mkElem "pre" [(foldXml $ foldl o keep $ map filt prefs) `o` replaceTag "code"]
+    filts = HaXml.mkElem "pre" [(HaXml.foldXml
+                                   $ foldl HaXml.o HaXml.keep
+                                   $ map filt prefs) `HaXml.o` HaXml.replaceTag "code"]
     -- an individual filter replaces the attributes of a tag with
     -- a style attribute when it has a specific 'class' attribute.
     filt (cls,style) =
-        replaceAttrs [("style",style)] `when`
-            (attrval $ (N "class",AttValue [Left cls]))
+        HaXml.replaceAttrs [("style",style)] `HaXml.when`
+            (HaXml.attrval $ (HaXml.N "class", HaXml.AttValue [Left cls]))
 
 -- Highlighting-Kate uses &lt;br/> in code blocks to indicate newlines.  WordPress
 -- (if not other software) chooses to strip them away when found in &lt;pre> sections
 -- of uploaded HTML.  So need to turn them back to newlines.
 
 replaceBreaks :: String -> String
-replaceBreaks s = verbatim $ filtDoc (xmlParse "input" s) where
+replaceBreaks s = HaXml.verbatim $ filtDoc (HaXml.xmlParse "input" s) where
    -- filter the document (a highlighting-kate hitlited fragment of
    -- haskell source
-   filtDoc (Document p s e m) = c where
-       [c] = filts (CElem e noPos)
-   filts = foldXml (literal "\n" `when` tag "br")
+   filtDoc (HaXml.Document p s e m) = c where
+       [c] = filts (HaXml.CElem e HaXml.noPos)
+   filts = HaXml.foldXml (HaXml.literal "\n" `HaXml.when` HaXml.tag "br")
 
 -- Note to self: the above is a function that could be made better in a 
 -- few ways and then factored out into a library.  A way to handle the 
