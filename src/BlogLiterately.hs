@@ -31,8 +31,8 @@ import Language.Haskell.HsColour.Colourise(defaultColourPrefs)
 -- it is incompatible with the 1.19 versions of HaXml!  If you have HaXml-1.19.*
 -- installed, you'll have to work around this.*
 
-import Network.XmlRpc.Client
-import Network.XmlRpc.Internals
+import qualified Network.XmlRpc.Client as XR
+import qualified Network.XmlRpc.Internals as XR
 
 -- And it works that out I'll need some miscellaneous other stuff. Since I'm
 -- writing a command line tool, I'll need to process the command line arguments, 
@@ -413,11 +413,11 @@ xformDoc hsHilite otherHilite doc =
 -- strings, so we need to explicitly convert everything to a `Value`, then combine:
 
 mkPost title text categories keywords = 
-    cats ++ [("title",toValue title),("description",toValue text)] ++ tags
+    cats ++ [("title", XR.toValue title),("description", XR.toValue text)] ++ tags
     where cats = if null categories then [] 
-              else [("categories",toValue categories)]
+              else [("categories", XR.toValue categories)]
           tags = if null keywords then [] 
-              else [("mt_keywords",toValue keywords)]
+              else [("mt_keywords", XR.toValue keywords)]
 
 
 -- The HaXR library exports a function for invoking XML-RPC procedures:
@@ -442,7 +442,7 @@ mkPost title text categories keywords =
 postIt :: String -> String -> String -> String -> String -> String 
     -> [String] -> [String] -> Bool -> IO String
 postIt url blogId user password title text cats keywords publish =
-    remote url "metaWeblog.newPost" blogId user password 
+    XR.remote url "metaWeblog.newPost" blogId user password
         (mkPost title text cats keywords) publish
 
 -- To update (replace) a post, the function would be:
@@ -450,7 +450,7 @@ postIt url blogId user password title text cats keywords publish =
 updateIt :: String -> String -> String -> String -> String -> String 
     -> [String] -> [String] -> Bool -> IO Bool
 updateIt url postId user password title text cats keywords publish =
-    remote url "metaWeblog.editPost" postId user password
+    XR.remote url "metaWeblog.editPost" postId user password
         (mkPost title text cats keywords) publish
 
 -- There are four modes of Haskell highlighting:
