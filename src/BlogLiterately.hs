@@ -7,6 +7,7 @@ module Main where
 
 import Data.Char
 import Data.List
+
 import qualified Data.Set as S
 
 import qualified Text.Blaze.Html.Renderer.String as BH
@@ -19,8 +20,8 @@ import qualified Text.Pandoc.Options as PO
 
 -- And [hscolour][] for highlighting:
 
-import Language.Haskell.HsColour(hscolour,Output(..))
-import Language.Haskell.HsColour.Colourise(defaultColourPrefs)
+import qualified Language.Haskell.HsColour as HsColour
+import qualified Language.Haskell.HsColour.Colourise as HsColour
 
 -- To post to a blog, we need the [MetaWeblog][] API, which is an XML-RPC-based
 -- protocol for interacting with blogs.
@@ -188,7 +189,7 @@ unTag s = either (const ("",s)) id $ parse tag "" s
 
 colourIt :: Bool -> String -> String
 colourIt literate srcTxt = 
-    hscolour CSS defaultColourPrefs False True "" literate srcTxt'
+    HsColour.hscolour HsColour.CSS HsColour.defaultColourPrefs False True "" literate srcTxt'
     where srcTxt' | literate = prepend srcTxt
                   | otherwise = srcTxt
   
