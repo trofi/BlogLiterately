@@ -242,7 +242,7 @@ getStylePrefs fname = liftM read (U.readFile fname)
 bakeStyles :: StylePrefs -> String -> String
 bakeStyles prefs s =  HaXml.verbatim $ filtDoc (HaXml.xmlParse "bake-input" s) where
     -- filter the document (an Hscoloured fragment of Haskell source)
-    filtDoc (HaXml.Document p s e m) =  c where
+    filtDoc (HaXml.Document _p _s e _m) = c where
         [c] = filts (HaXml.CElem e HaXml.noPos)
     -- the filter is a fold of individual filters for each CSS class
     filts = HaXml.mkElem "pre" [(HaXml.foldXml
@@ -262,7 +262,7 @@ replaceBreaks :: String -> String
 replaceBreaks s = HaXml.verbatim $ filtDoc (HaXml.xmlParse "input" s) where
    -- filter the document (a highlighting-kate hitlited fragment of
    -- haskell source
-   filtDoc (HaXml.Document p s e m) = c where
+   filtDoc (HaXml.Document _p _s e _m) = c where
        [c] = filts (HaXml.CElem e HaXml.noPos)
    filts = HaXml.foldXml (HaXml.literal "\n" `HaXml.when` HaXml.tag "br")
 
@@ -279,7 +279,7 @@ replaceBreaks s = HaXml.verbatim $ filtDoc (HaXml.xmlParse "input" s) where
 -- highlighting of non-Haskell has been selected.
 
 colouriseCodeBlock :: HsHighlight -> Bool -> P.Block -> P.Block
-colouriseCodeBlock hsHilite otherHilite b@(P.CodeBlock attr@(_,classes,_) s) =
+colouriseCodeBlock hsHilite otherHilite (P.CodeBlock attr@(_,classes,_) s) =
     if tag == "haskell" || haskell
         then case hsHilite of
             HsColourInline style -> 
@@ -298,8 +298,8 @@ colouriseCodeBlock hsHilite otherHilite b@(P.CodeBlock attr@(_,classes,_) s) =
           hsrc = if lit then prepend src else src
           lit = False -- "sourceCode" `elem` classes (avoid ugly '>')
           haskell = "haskell" `elem` classes
-          simpleHTML s = "<pre><code>" ++ s ++ "</code></pre>"
-          myHiliteK attr s = P.CodeBlock attr s
+          simpleHTML s' = "<pre><code>" ++ s' ++ "</code></pre>"
+          myHiliteK attr' s' = P.CodeBlock attr' s'
 colouriseCodeBlock _ _ b = b
 
 colourisePandoc :: HsHighlight -> Bool -> P.Pandoc -> P.Pandoc
