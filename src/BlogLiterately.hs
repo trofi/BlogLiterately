@@ -415,6 +415,7 @@ xformDoc hsHilite otherHilite doc =
 -- (`String`) and thus can be put into a list.  But the categories are a list of
 -- strings, so we need to explicitly convert everything to a `Value`, then combine:
 
+mkPost :: String -> String -> [String] -> [String] -> [(String, XR.Value)]
 mkPost title text categories keywords = 
     cats ++ [("title", XR.toValue title),("description", XR.toValue text)] ++ tags
     where cats = if null categories then [] 
