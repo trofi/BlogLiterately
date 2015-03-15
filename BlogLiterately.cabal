@@ -158,7 +158,6 @@ Executable BlogLiterately
                   attoparsec >= 0.12,
                   bytestring,
                   HaXml >= 1.22,
-                  utf8-string >= 0.3,
                   hscolour >= 1.15,
                   xhtml >= 3000.2,
                   haxr >= 3000.2.1,
@@ -169,5 +168,6 @@ Executable BlogLiterately
                   directory
 
   Main-Is:        BlogLiterately.hs
+  Other-Modules:  Config
   Hs-Source-Dirs: src
-  Ghc-Options: -fwarn-unused-imports -Wall
+  Ghc-Options: -Wall

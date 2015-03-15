@@ -51,7 +51,6 @@ import System.FilePath
 import qualified Text.XML.HaXml as HaXml
 import qualified Text.XML.HaXml.Posn as HaXml
 
-import qualified System.IO.UTF8 as U
 import qualified Data.ByteString as BS
 
 import Control.Monad (liftM)
@@ -233,7 +232,7 @@ defaultStylePrefs = [
 
 getStylePrefs :: [Char] -> IO [([Char], [Char])]
 getStylePrefs "" = return defaultStylePrefs
-getStylePrefs fname = liftM read (U.readFile fname)
+getStylePrefs fname = liftM read (readFile fname)
 
 -- Hscolour produces a `String` of HTML.  To 'bake' the styles into
 -- the HTML it, we need to parse it, manipulate it
@@ -558,7 +557,7 @@ blogLiterately (BlogLiterately _ _ _ (Just mode) style hsmode other pub cats key
     let hsmode' = case hsmode of
             HsColourInline _ -> HsColourInline prefs
             _ -> hsmode
-    fileContent <- U.readFile file
+    fileContent <- readFile file
 
     case parseDocument markup fileContent of
       Left err -> putStrLn $ err
