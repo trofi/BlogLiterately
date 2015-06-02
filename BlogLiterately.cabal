@@ -161,7 +161,7 @@ Executable BlogLiterately
                   hscolour >= 1.15,
                   xhtml >= 3000.2,
                   haxr >= 3000.2.1,
-                  pandoc >= 1.13,
+                  pandoc >= 1.14,
                   highlighting-kate >= 0.5.3.0,
                   filepath,
                   containers,

@@ -335,7 +335,7 @@ parseDocument markup s = do
 
   return (final_meta, P.Pandoc (P.makeMeta [] [] []) decl')
   where
-    P.Pandoc meta' decl = pandoc_parser parseOpts $ fixLineEndings s
+    P.Pandoc meta' decl = either (error . show) id $ pandoc_parser parseOpts $ fixLineEndings s
     pandoc_parser = case markup of
                      Markdown -> P.readMarkdown
                      RST      -> P.readRST
