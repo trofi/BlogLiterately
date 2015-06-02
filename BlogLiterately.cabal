@@ -170,4 +170,6 @@ Executable BlogLiterately
   Main-Is:        BlogLiterately.hs
   Other-Modules:  Config
   Hs-Source-Dirs: src
-  Ghc-Options: -Wall
+  -- -threaded is some haxr requirement:
+  --  BlogLiterately: user error (RTS doesn't support multiple OS threads (use ghc -threaded when linking))
+  Ghc-Options: -Wall -threaded
